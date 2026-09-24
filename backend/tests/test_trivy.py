@@ -190,7 +190,15 @@ def test_timeout_kills_process_group(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(shutil.which('trivy') is None, reason='Real CLI runs in worker container and CI')
-def test_real_trivy_dependencies_config_and_ignores(tmp_path):
+def test_real_trivy_dependencies_config_and_ignores(tmp_path, monkeypatch):
+    # Only this synthetic fixture may expose diagnostic logs on failure, never production scans.
+    real_run = trivy_runner._run
+    def fixture_run(command, cwd, environment, log, report=None, timeout=300):
+        try:
+            return real_run(command, cwd, environment, log, report, timeout)
+        except TrivyError as exc:
+            pytest.fail(f"Synthetic Trivy fixture: {exc}\n{log.read_text()[-5000:]}")
+    monkeypatch.setattr(trivy_runner, '_run', fixture_run)
     (tmp_path/'requirements.txt').write_text('django==2.2.0\n')
     (tmp_path/'Dockerfile').write_text('FROM alpine:latest\n#trivy:ignore:DS-0002\nUSER root\n')
     (tmp_path/'pod.yaml').write_text('apiVersion: v1\nkind: Pod\nmetadata:\n  name: scanner-fixture\nspec:\n  containers:\n    - name: app\n      image: nginx:latest\n      securityContext:\n        privileged: true\n')
