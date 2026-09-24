@@ -184,7 +184,8 @@ def log_trivy_storage():
         mounts = [line.split() for line in Path('/proc/mounts').read_text().splitlines()]
         matching = [entry for entry in mounts if str(cache).startswith(entry[1].rstrip('/') + '/')]
         filesystem = max(matching, key=lambda entry: len(entry[1]))[2]
-        memory_limit = Path('/sys/fs/cgroup/memory.max').read_text().strip()
+        limit_file = Path('/sys/fs/cgroup/memory.max')
+        memory_limit = limit_file.read_text().strip() if limit_file.exists() else 'unavailable'
         print(f'TRIVY_STORAGE filesystem={filesystem} memory_limit={memory_limit} free_bytes={shutil.disk_usage(cache).free}', flush=True)
     except (OSError, ValueError, IndexError):
         pass
