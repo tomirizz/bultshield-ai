@@ -18,7 +18,7 @@ from .repository_checkout import (
 )
 from .scanner_catalog import RULES_SHA256, SCANNERS, SEMGREP_VERSION, TRIVY_VERSION, scan_configuration
 from .semgrep_runner import SemgrepError, run_semgrep
-from .trivy_runner import TrivyError, run_trivy
+from .trivy_runner import TrivyError, log_trivy_storage, run_trivy
 
 
 def now():
@@ -262,6 +262,7 @@ def process_job(data):
 
 def main():
     print("BULTSHIELD_WORKER_STARTING", flush=True)
+    log_trivy_storage()
     database_available = False
 
     while True:
