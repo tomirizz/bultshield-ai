@@ -198,12 +198,14 @@ def run_trivy(repository):
             environment = {
                 'PATH': os.pathsep.join([str(Path(executable).parent), os.defpath]),
                 'HOME': str(workspace), 'TMPDIR': str(workspace), 'LANG': 'C.UTF-8',
-                'GOMAXPROCS': '1', 'GOMEMLIMIT': '192MiB',
+                'GOMAXPROCS': '1', 'GOMEMLIMIT': '96MiB', 'GOGC': '20',
             }
             common = [executable, 'fs', '--config', str(config), '--cache-dir', str(cache),
                       '--disable-telemetry', '--skip-version-check', '--no-progress', '--timeout', '5m']
             # Update only the trusted public vulnerability DB, without giving this step source files.
+            print('TRIVY_DB_UPDATE_STARTED', flush=True)
             _run(common + ['--download-db-only'], workspace, environment, workspace / 'db.log')
+            print('TRIVY_DB_UPDATE_COMPLETED', flush=True)
             metadata = json.loads((cache / 'db' / 'metadata.json').read_text())
             updated = datetime.fromisoformat(metadata['UpdatedAt'].replace('Z', '+00:00'))
             if updated.tzinfo is None or not timedelta(0) <= datetime.now(timezone.utc) - updated <= timedelta(hours=24):
@@ -217,7 +219,9 @@ def run_trivy(repository):
                 '--file-patterns', 'pip:requirements.*\\.txt$',
                 '--parallel', '1', '--format', 'json', '--output', str(report), str(source),
             ]
+            print('TRIVY_ANALYSIS_STARTED', flush=True)
             _run(command, workspace, environment, workspace / 'scan.log', report)
+            print('TRIVY_ANALYSIS_COMPLETED', flush=True)
             if not report.is_file() or report.stat().st_size > MAX_REPORT:
                 raise TrivyError('JSON Trivy отсутствует или превышает 20 МБ.')
             parsed = parse_trivy_report(json.loads(report.read_text()), files)

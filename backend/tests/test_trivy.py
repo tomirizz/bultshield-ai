@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from app import trivy_runner, worker
 from app.finding_normalizer import normalize_trivy
-from app.models import Finding, FindingStatus
+from app.models import Finding, FindingStatus, ScanJob
 from app.trivy_runner import TrivyError, TrivyReport, _run, _snapshot, parse_trivy_report, run_trivy
 from test_gitleaks import project_and_scan
 from test_gitleaks import worker_db as worker_db
@@ -272,3 +272,24 @@ def test_database_mirror_fallback_requires_successful_exit(tmp_path, monkeypatch
             _run(['trivy', 'fs', '--download-db-only'], tmp_path, {}, tmp_path/'log')
     else:
         _run(['trivy', 'fs', '--download-db-only'], tmp_path, {}, tmp_path/'log')
+
+
+def test_restart_recovery_preserves_completed_scanner_findings(client, db, worker_db, monkeypatch, tmp_path):
+    scan = project_and_scan(client)
+    install_scan_mocks(monkeypatch, tmp_path)
+    def interrupted(path):
+        raise SystemExit('simulated worker termination')
+    monkeypatch.setattr(worker, 'run_trivy', interrupted)
+    data = worker.claim_job()
+    with pytest.raises(SystemExit):
+        worker.process_job(data)
+    job = db.get(ScanJob, data.job_id)
+    job.heartbeat_at = datetime.now(timezone.utc) - timedelta(minutes=16)
+    db.commit()
+    worker.recover_stale_jobs()
+    result = client.get('/api/scans').json()[0]
+    assert result['status'] == 'FAILED'
+    assert result['scanner_results']['trivy']['status'] == 'FAILED'
+    assert all(result['scanner_results'][name]['status'] == 'COMPLETED' for name in ('gitleaks', 'semgrep'))
+    assert {f['scanner'] for f in client.get('/api/findings', params={'scan_id': scan['id']}).json()} == {'gitleaks', 'semgrep'}
+    assert client.post('/api/scans', json={'repository_id': scan['repository_id']}).status_code == 202
