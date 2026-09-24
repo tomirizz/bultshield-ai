@@ -165,7 +165,8 @@ def _run(command, cwd, environment, log, report=None, timeout=300):
     with log.open('wb') as output:
         process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
                                    stdout=output, stderr=output, start_new_session=True)
-        _prefer_child_oom_victim(process.pid)
+        if process.poll() is None:
+            _prefer_child_oom_victim(process.pid)
         deadline = time.monotonic() + timeout
         next_sample = 0
         phase = 'db_update' if '--download-db-only' in command else 'analysis'
