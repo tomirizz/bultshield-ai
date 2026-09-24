@@ -1,0 +1,165 @@
+{
+  "rules": [
+    {
+      "id": "bultshield.python-dynamic-eval",
+      "languages": [
+        "python"
+      ],
+      "severity": "ERROR",
+      "message": "eval/exec может выполнять произвольный код. Проверьте происхождение аргумента и используйте безопасный разбор данных.",
+      "metadata": {
+        "cwe": "CWE-95",
+        "title": "Динамическое выполнение Python"
+      },
+      "pattern-either": [
+        {
+          "pattern": "eval(...)"
+        },
+        {
+          "pattern": "exec(...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.python-shell-true",
+      "languages": [
+        "python"
+      ],
+      "severity": "ERROR",
+      "message": "shell=True позволяет интерпретировать метасимволы оболочки. Передавайте список аргументов с shell=False.",
+      "metadata": {
+        "cwe": "CWE-78",
+        "title": "Запуск команды через shell"
+      },
+      "pattern-either": [
+        {
+          "pattern": "subprocess.$FUNC(..., shell=True, ...)"
+        },
+        {
+          "pattern": "os.system(...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.python-unsafe-pickle",
+      "languages": [
+        "python"
+      ],
+      "severity": "WARNING",
+      "message": "Не загружайте pickle из недоверенных источников: десериализация может выполнять код.",
+      "metadata": {
+        "cwe": "CWE-502",
+        "title": "Небезопасная десериализация pickle"
+      },
+      "pattern-either": [
+        {
+          "pattern": "pickle.loads(...)"
+        },
+        {
+          "pattern": "pickle.load(...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.python-unsafe-yaml",
+      "languages": [
+        "python"
+      ],
+      "severity": "WARNING",
+      "message": "Используйте yaml.safe_load для недоверенных данных.",
+      "metadata": {
+        "cwe": "CWE-502",
+        "title": "Небезопасная загрузка YAML"
+      },
+      "pattern-either": [
+        {
+          "pattern": "yaml.unsafe_load(...)"
+        },
+        {
+          "pattern": "yaml.load($DATA)"
+        },
+        {
+          "pattern": "yaml.load(..., Loader=yaml.Loader, ...)"
+        },
+        {
+          "pattern": "yaml.load(..., Loader=yaml.UnsafeLoader, ...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.python-tls-verification-disabled",
+      "languages": [
+        "python"
+      ],
+      "severity": "WARNING",
+      "message": "verify=False отключает проверку сертификата. Включите проверку и настройте доверенный CA.",
+      "metadata": {
+        "cwe": "CWE-295",
+        "title": "Проверка TLS отключена"
+      },
+      "pattern": "requests.$METHOD(..., verify=False, ...)"
+    },
+    {
+      "id": "bultshield.javascript-dynamic-eval",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "severity": "ERROR",
+      "message": "eval/Function может выполнять недоверенный код. Используйте безопасный разбор данных вместо динамического выполнения.",
+      "metadata": {
+        "cwe": "CWE-95",
+        "title": "Динамическое выполнение JavaScript"
+      },
+      "pattern-either": [
+        {
+          "pattern": "eval(...)"
+        },
+        {
+          "pattern": "new Function(...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.javascript-shell-exec",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "severity": "ERROR",
+      "message": "child_process.exec выполняет строку через оболочку. Проверьте входные данные; предпочитайте execFile со списком аргументов.",
+      "metadata": {
+        "cwe": "CWE-78",
+        "title": "Команда Node.js через shell"
+      },
+      "pattern-either": [
+        {
+          "pattern": "require(\"child_process\").exec(...)"
+        },
+        {
+          "pattern": "require(\"child_process\").execSync(...)"
+        },
+        {
+          "pattern": "require(\"node:child_process\").exec(...)"
+        },
+        {
+          "pattern": "require(\"node:child_process\").execSync(...)"
+        }
+      ]
+    },
+    {
+      "id": "bultshield.javascript-innerhtml",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "severity": "WARNING",
+      "message": "Если значение содержит пользовательский ввод, возможен XSS. Используйте textContent или проверенный HTML sanitizer.",
+      "metadata": {
+        "cwe": "CWE-79",
+        "title": "Присваивание HTML без проверки"
+      },
+      "pattern": "$ELEMENT.innerHTML = $VALUE"
+    }
+  ]
+}

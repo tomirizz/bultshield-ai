@@ -15,11 +15,11 @@ export interface Readiness {
 export interface Scan {
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
   error_message: string | null;
-  scanner_results: { gitleaks?: { finding_count?: number; status: string } };
+  scanner_results: Record<string, { finding_count?: number; status: string; error?: string; scanned_files?: number }>;
 }
 export interface Finding {
   id: string; project_id: string; scan_id: string; description: string; evidence: string; rule_id: string; scanner: string; category: string; title: string;
-  severity: string; status: string; file: string | null; line_start: number | null; created_at: string;
+  cwe: string | null; original_severity: string | null; severity: string; status: string; file: string | null; line_start: number | null; created_at: string;
 }
 export interface NewProject {
   name: string; description: string; target_url: string | null;
