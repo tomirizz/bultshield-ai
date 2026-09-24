@@ -186,6 +186,15 @@ def run_trivy(repository):
         # Worker-owned cache persists between jobs, but no repository files are stored here.
         cache = Path.home() / '.cache' / 'bultshield-trivy'
         cache.mkdir(parents=True, exist_ok=True)
+        # Numeric, platform-only diagnostics: never print paths, environment or source.
+        try:
+            mounts = [line.split() for line in Path('/proc/mounts').read_text().splitlines()]
+            matching = [entry for entry in mounts if str(cache).startswith(entry[1].rstrip('/') + '/')]
+            filesystem = max(matching, key=lambda entry: len(entry[1]))[2]
+            memory_limit = Path('/sys/fs/cgroup/memory.max').read_text().strip()
+            print(f'TRIVY_STORAGE filesystem={filesystem} memory_limit={memory_limit} free_bytes={shutil.disk_usage(cache).free}', flush=True)
+        except (OSError, ValueError, IndexError):
+            pass
         with TemporaryDirectory(prefix='bultshield-trivy-') as temporary:
             workspace = Path(temporary)
             source = workspace / 'source'
