@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_session
-from .models import AIAnalysis, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, Scanner, Severity, User
+from .models import AIAnalysis, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, Scanner, Severity, User, ScanJob, ScanStatus
 from .schemas import (
     AIAnalysisOut,
     FindingOut,
@@ -164,9 +164,49 @@ def list_rescans(db: DB, project_id: uuid.UUID | None = None, limit: Limit = 100
     return db.scalars(query).all()
 
 
-@router.post("/scans", status_code=501)
-def create_scan(data: ScanRequest):
-    raise HTTPException(501, {"code": "SCANNERS_NOT_CONNECTED", "message": "Этап 2: сканеры ещё не подключены. Задание не создано."})
+@router.post("/scans", response_model=ScanOut, status_code=202)
+def create_scan(data: ScanRequest, db: DB):
+    repository = db.scalar(
+        select(Repository)
+        .where(Repository.id == data.repository_id)
+        .with_for_update()
+    )
+    if repository is None:
+        raise HTTPException(404, "Репозиторий не найден.")
+
+    active_job = db.scalar(
+        select(ScanJob.id)
+        .join(Scan, Scan.id == ScanJob.scan_id)
+        .where(
+            Scan.repository_id == repository.id,
+            ScanJob.status.in_(["QUEUED", "RUNNING"]),
+        )
+        .limit(1)
+    )
+    if active_job is not None:
+        raise HTTPException(
+            409,
+            "Этот репозиторий уже ожидает проверки или сканируется.",
+        )
+
+    scan = Scan(
+        project_id=repository.project_id,
+        repository_id=repository.id,
+        status=ScanStatus.QUEUED,
+        scanner_config={
+            "scanners": ["gitleaks"],
+            "scope": "branch_snapshot",
+            "branch": repository.default_branch,
+            "gitleaks_version": "8.30.1",
+        },
+    )
+    db.add(scan)
+    db.flush()
+
+    db.add(ScanJob(scan_id=scan.id, status="QUEUED"))
+    db.commit()
+    db.refresh(scan)
+    return scan
 
 
 @router.post("/rescans", status_code=501)
