@@ -124,7 +124,7 @@ def install_scan_mocks(monkeypatch, tmp_path):
 
 def test_combined_findings_duplicates_repeated_scans_and_filters(client, worker_db, monkeypatch, tmp_path):
     scan = project_and_scan(client)
-    assert scan['scanner_config']['scanners'] == ['gitleaks', 'semgrep']
+    assert scan['scanner_config']['scanners'] == ['gitleaks', 'semgrep', 'trivy']
     install_scan_mocks(monkeypatch, tmp_path)
     job = worker.claim_job()
     worker.process_job(job)

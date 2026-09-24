@@ -40,6 +40,8 @@ jobs:
           python -m venv /tmp/semgrep
           /tmp/semgrep/bin/pip install -r backend/requirements-semgrep.txt
           sudo ln -s /tmp/semgrep/bin/semgrep /usr/local/bin/semgrep
+      - name: Install SHA256-verified Trivy CLI
+        run: sudo python scripts/install_trivy.py
       - run: python scripts/check_backend.py
   frontend:
     runs-on: ubuntu-latest

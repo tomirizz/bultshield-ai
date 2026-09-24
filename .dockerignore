@@ -8,3 +8,5 @@ frontend/dist
 .pytest_cache
 tests
 docs
+
+demo/

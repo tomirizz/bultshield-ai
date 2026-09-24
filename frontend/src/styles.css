@@ -17,3 +17,6 @@
 
 
 .preview-note{display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.6;color:var(--muted);padding:10px 13px;border:1px dashed var(--line);border-radius:6px;margin-bottom:20px}
+
+/* Finding filters remain usable with all four dimensions. */
+.panel-heading:has(.filter-label) { flex-wrap: wrap; gap: 14px; }

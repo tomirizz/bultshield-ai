@@ -1,0 +1,2 @@
+# Intentionally vulnerable scanner fixture. Never installed by app or worker.
+requests==2.31.0

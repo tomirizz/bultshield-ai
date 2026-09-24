@@ -29,10 +29,13 @@ RUN python -m venv /opt/semgrep \
     && /opt/semgrep/bin/pip install --no-cache-dir -r requirements-semgrep.txt \
     && ln -s /opt/semgrep/bin/semgrep /usr/local/bin/semgrep
 
+COPY scripts/install_trivy.py /tmp/install_trivy.py
+RUN python /tmp/install_trivy.py && rm /tmp/install_trivy.py
+
 COPY --chown=bultshield:bultshield backend/ ./
 
 USER bultshield
 
-RUN git --version && gitleaks version && semgrep --version
+RUN git --version && gitleaks version && semgrep --version && trivy --version
 
 CMD ["python", "-m", "app.worker"]
