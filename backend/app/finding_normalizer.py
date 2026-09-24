@@ -99,3 +99,39 @@ def normalize_gitleaks(
         )
 
     return findings
+
+
+def normalize_semgrep(results, *, project_id, repository_id, scan_id, commit_sha):
+    from .scanner_catalog import RULES, RULES_SHA256, SEMGREP_VERSION
+
+    findings = []
+    seen = set()
+    for result in results:
+        rule = RULES[result['rule_id']]
+        identity = {
+            'repository_id': str(repository_id), 'scanner': Scanner.SEMGREP.value,
+            'rule_id': result['rule_id'], 'file': result['file'],
+            'line_start': result['start_line'], 'line_end': result['end_line'],
+            'column_start': result['start_col'], 'column_end': result['end_col'],
+        }
+        fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        findings.append(Finding(
+            project_id=project_id, scan_id=scan_id, scanner=Scanner.SEMGREP,
+            category=Category.CODE, title=rule['metadata']['title'], description=rule['message'],
+            severity={'ERROR': Severity.HIGH, 'WARNING': Severity.MEDIUM, 'INFO': Severity.INFO}[rule['severity']],
+            original_severity=rule['severity'], file=result['file'],
+            line_start=result['start_line'], line_end=result['end_line'], rule_id=result['rule_id'],
+            cwe=rule['metadata']['cwe'], cve=None, evidence='[REDACTED]',
+            status=FindingStatus.OPEN, fingerprint=fingerprint,
+            extra={
+                'repository_id': str(repository_id), 'commit_sha': commit_sha,
+                'scanner_version': SEMGREP_VERSION, 'rules_sha256': RULES_SHA256,
+                'scan_scope': 'branch_snapshot', 'column_start': result['start_col'], 'column_end': result['end_col'],
+                'source_redacted': True, 'severity_source': 'bultshield_rule_policy',
+                'review_required': True,
+            },
+        ))
+    return findings

@@ -1,0 +1,2 @@
+# Isolated from the API dependencies in /opt/semgrep.
+semgrep==1.178.0

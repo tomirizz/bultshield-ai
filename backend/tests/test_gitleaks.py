@@ -9,6 +9,7 @@ from app import worker
 from app.gitleaks_runner import GitleaksError, _sanitize_finding, run_gitleaks
 from app.models import Finding, Scan, ScanJob, ScanStatus
 from app.repository_checkout import RepositoryCheckoutError, checkout_repository
+from app.semgrep_runner import SemgrepReport
 from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
@@ -26,6 +27,7 @@ def project_and_scan(client, branch="main"):
 @pytest.fixture
 def worker_db(engine, monkeypatch):
     monkeypatch.setattr(worker, 'sessions', lambda: sessionmaker(bind=engine, expire_on_commit=False))
+    monkeypatch.setattr(worker, 'run_semgrep', lambda path: SemgrepReport([], 0))
 
 
 def sanitized(root):

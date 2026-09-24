@@ -9,13 +9,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from .config import get_settings
-from .finding_normalizer import normalize_gitleaks
+from .finding_normalizer import normalize_gitleaks, normalize_semgrep
 from .gitleaks_runner import GitleaksError, run_gitleaks
 from .models import Repository, Scan, ScanJob, ScanStatus
 from .repository_checkout import (
     RepositoryCheckoutError,
     checkout_repository,
 )
+from .scanner_catalog import RULES_SHA256, SCANNERS, SEMGREP_VERSION, scan_configuration
+from .semgrep_runner import SemgrepError, run_semgrep
 
 
 def now():
@@ -61,12 +63,11 @@ def mark_failed(db, job, message):
         scan.status = ScanStatus.FAILED
         scan.error_message = message
         scan.completed_at = timestamp
-        scan.scanner_results = {
-            "gitleaks": {
-                "status": "FAILED",
-                "error": message,
-            }
-        }
+        results = dict(scan.scanner_results or {})
+        for scanner in scan.scanner_config.get("scanners", list(SCANNERS)):
+            if results.get(scanner, {}).get("status") != "COMPLETED":
+                results[scanner] = {"status": "FAILED", "error": message}
+        scan.scanner_results = results
 
 
 def recover_stale_jobs():
@@ -131,16 +132,8 @@ def claim_job():
         scan.started_at = timestamp
         scan.completed_at = None
         scan.error_message = None
-        scan.scanner_config = {
-            "scanners": ["gitleaks"],
-            "scope": "branch_snapshot",
-            "branch": repository.default_branch,
-            "gitleaks_version": "8.30.1",
-            "max_file_bytes": 2 * 1024 * 1024,
-            "max_total_bytes": 50 * 1024 * 1024,
-            "archive_depth": 0,
-            "decode_depth": 0,
-        }
+        scan.scanner_config = scan_configuration(repository.default_branch)
+        scan.scanner_results = {name: {"status": "PENDING"} for name in SCANNERS}
 
         return JobData(
             job_id=job.id,
@@ -193,57 +186,58 @@ def fail_job(data, message):
 
 def execute_job(data):
     print(f"SCAN_STARTED {data.scan_id}", flush=True)
-
+    failures = []
     with checkout_repository(data.url, data.branch) as checkout:
         repository_path, commit_sha = checkout
-
-        update_progress(
-            data,
-            ScanStatus.SCANNING,
-            commit_sha=commit_sha,
-        )
-
-        results = run_gitleaks(repository_path)
-
-    # К этому моменту временная копия репозитория удалена.
-    update_progress(data, ScanStatus.NORMALIZING)
-
-    findings = normalize_gitleaks(
-        results,
-        project_id=data.project_id,
-        repository_id=data.repository_id,
-        scan_id=data.scan_id,
-        commit_sha=commit_sha,
-    )
-
-    # Findings и итоговые статусы сохраняются одной транзакцией.
+        update_progress(data, ScanStatus.SCANNING, commit_sha=commit_sha)
+        for name, runner, normalizer, expected_error in (
+            ("gitleaks", run_gitleaks, normalize_gitleaks, GitleaksError),
+            ("semgrep", run_semgrep, normalize_semgrep, SemgrepError),
+        ):
+            with sessions().begin() as db:
+                job, scan = active_records(db, data)
+                job.heartbeat_at = now()
+                scan.status = ScanStatus.SCANNING
+                scan.scanner_results = {**scan.scanner_results, name: {"status": "RUNNING"}}
+            try:
+                report = runner(repository_path)
+                update_progress(data, ScanStatus.NORMALIZING)
+                results = report.findings if name == "semgrep" else report
+                findings = normalizer(results, project_id=data.project_id, repository_id=data.repository_id,
+                                      scan_id=data.scan_id, commit_sha=commit_sha)
+                summary = {
+                    "status": "COMPLETED", "finding_count": len(findings),
+                    "version": SEMGREP_VERSION if name == "semgrep" else "8.30.1",
+                    "scope": "branch_snapshot", "source_redacted": True,
+                }
+                if name == "semgrep":
+                    summary.update(scanned_files=report.scanned_files, rules_sha256=RULES_SHA256)
+                else:
+                    summary["secrets_redacted"] = True
+                # Each scanner's findings and status commit together. Another scanner's
+                # failure or a worker restart cannot erase already completed findings.
+                with sessions().begin() as db:
+                    job, scan = active_records(db, data)
+                    db.add_all(findings)
+                    scan.scanner_results = {**scan.scanner_results, name: summary}
+                    job.heartbeat_at = now()
+            except expected_error as exc:
+                message = str(exc)
+                failures.append(name)
+                with sessions().begin() as db:
+                    job, scan = active_records(db, data)
+                    scan.scanner_results = {**scan.scanner_results, name: {"status": "FAILED", "error": message}}
+                    job.heartbeat_at = now()
+    # The temporary repository and unredacted reports are gone before final status.
     with sessions().begin() as db:
         job, scan = active_records(db, data)
-        db.add_all(findings)
-
         timestamp = now()
-
-        scan.status = ScanStatus.COMPLETED
+        scan.status = ScanStatus.FAILED if failures else ScanStatus.COMPLETED
+        scan.error_message = ("Неполная проверка: " + ", ".join(failures) + ". Результаты успешных сканеров сохранены.") if failures else None
         scan.completed_at = timestamp
-        scan.error_message = None
-        scan.scanner_results = {
-            "gitleaks": {
-                "status": "COMPLETED",
-                "finding_count": len(findings),
-                "version": "8.30.1",
-                "scope": "branch_snapshot",
-                "secrets_redacted": True,
-            }
-        }
-
-        job.status = "COMPLETED"
+        job.status = "FAILED" if failures else "COMPLETED"
         job.heartbeat_at = timestamp
-
-    print(
-        f"SCAN_COMPLETED {data.scan_id} findings={len(findings)}",
-        flush=True,
-    )
-
+    print(f"SCAN_{job.status} {data.scan_id}", flush=True)
 
 def process_job(data):
     try:

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_session
 from .models import AIAnalysis, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
+from .scanner_catalog import scan_configuration
 from .schemas import (
     AIAnalysisOut,
     FindingOut,
@@ -52,7 +53,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 3, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
+    return {**counts, "stage": 4, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])
@@ -202,12 +203,7 @@ def create_scan(data: ScanRequest, db: DB):
         project_id=repository.project_id,
         repository_id=repository.id,
         status=ScanStatus.QUEUED,
-        scanner_config={
-            "scanners": ["gitleaks"],
-            "scope": "branch_snapshot",
-            "branch": repository.default_branch,
-            "gitleaks_version": "8.30.1",
-        },
+        scanner_config=scan_configuration(repository.default_branch),
     )
     db.add(scan)
     db.flush()

@@ -35,6 +35,11 @@ jobs:
           sudo install /tmp/gitleaks /usr/local/bin/gitleaks
           docker rm gitleaks-cli
           gitleaks version
+      - name: Install isolated Semgrep CE for integration tests
+        run: |
+          python -m venv /tmp/semgrep
+          /tmp/semgrep/bin/pip install -r backend/requirements-semgrep.txt
+          sudo ln -s /tmp/semgrep/bin/semgrep /usr/local/bin/semgrep
       - run: python scripts/check_backend.py
   frontend:
     runs-on: ubuntu-latest

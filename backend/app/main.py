@@ -10,7 +10,7 @@ from .database import get_engine
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="BultShield AI", version="0.3.0", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(title="BultShield AI", version="0.4.0", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
     app.include_router(router)
 
     @app.exception_handler(SQLAlchemyError)
@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health/live")
     def liveness():
-        return {"status": "ok", "app": "bultshield-ai", "stage": 3}
+        return {"status": "ok", "app": "bultshield-ai", "stage": 4}
 
     @app.get("/health/ready")
     def readiness():
@@ -49,7 +49,7 @@ def create_app() -> FastAPI:
             "database": "connected",
             "schema_revision": revision,
             "environment": get_settings().app_env,
-            "stage": 3,
+            "stage": 4,
             "scanners_enabled": True,
             "ai_enabled": False,
         }
