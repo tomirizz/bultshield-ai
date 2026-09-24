@@ -1,8 +1,8 @@
-# BultShield AI — Stage 4
+# BultShield AI — Stage 5
 
-Gitleaks + Semgrep CE → unified PostgreSQL findings → dashboard. [Stage 4 scope, security policy and deployment](docs/STAGE_4.md).
+Gitleaks + Semgrep CE + Trivy → unified PostgreSQL findings → dashboard. [Stage 5 scope, security policy and deployment](docs/STAGE_5.md).
 
-Public GitHub repository → shallow checkout → Gitleaks 8.30.1 + Semgrep CE 1.178.0 → redacted findings in PostgreSQL → dashboard.
+Public GitHub repository → shallow checkout → Gitleaks 8.30.1 + Semgrep CE 1.178.0 + Trivy 0.74.0 → redacted findings in PostgreSQL → dashboard.
 
 The application, PostgreSQL and worker run on **Bult.ai**. The future LLM will also run on Bult; no external LLM API is used.
 
@@ -26,6 +26,8 @@ The shared MVP workspace has no login. Only public repositories should be scanne
 
 ## Checks
 
-Python 3.12; Node.js 24. Install backend/requirements-dev.txt and run `python scripts/check_backend.py` against a **local disposable *_test PostgreSQL database**. The tests refuse production databases. Run `ruff check --config backend/pyproject.toml backend scripts` and `npm ci && npm run build` inside frontend. CI additionally installs both pinned CLIs for real positive/negative detection and masking tests.
+Python 3.12; Node.js 24. Install backend/requirements-dev.txt and run `python scripts/check_backend.py` against a **local disposable *_test PostgreSQL database**. The tests refuse production databases. Run `ruff check --config backend/pyproject.toml backend scripts` and `npm ci && npm run build` inside frontend. CI additionally installs all three pinned CLIs for real positive/negative detection and masking tests.
 
-Trivy, Nuclei, AI analyses, fixes and rescan reconciliation belong to later stages. Semgrep currently covers Python and JavaScript/TypeScript with eight local rules. See docs/STAGE_4.md for exact scope and limits.
+Nuclei, AI analyses, fixes and rescan reconciliation belong to later stages. Semgrep currently covers Python and JavaScript/TypeScript with eight local rules. See docs/STAGE_5.md for exact scope and limits.
+
+Trivy scans dependency manifests/lockfiles and Dockerfile/Kubernetes configurations. Findings retain CVE (when supplied), package, installed/fixed versions and severity. Scanner, severity, category and status filters are applied in PostgreSQL before the 100-row limit. The worker downloads the public vulnerability database into its own ephemeral cache (approximately 1.4 GiB currently; allow at least 3 GiB free for updates). Source analysis uses offline dependency resolution; stale/unavailable databases fail explicitly. No disk is added to PostgreSQL.

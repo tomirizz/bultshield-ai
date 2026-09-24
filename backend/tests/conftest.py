@@ -53,3 +53,10 @@ def client(engine):
 def db(engine):
     with Session(engine, expire_on_commit=False) as session:
         yield session
+
+
+@pytest.fixture(autouse=True)
+def isolate_trivy(monkeypatch):
+    from app import worker
+    from app.trivy_runner import TrivyReport
+    monkeypatch.setattr(worker, 'run_trivy', lambda path: TrivyReport([], {}))

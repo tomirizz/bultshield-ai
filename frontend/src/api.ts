@@ -15,10 +15,11 @@ export interface Readiness {
 export interface Scan {
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
   error_message: string | null;
-  scanner_results: Record<string, { finding_count?: number; status: string; error?: string; scanned_files?: number }>;
+  scanner_results: Record<string, { finding_count?: number; status: string; error?: string; scanned_files?: number; input_files?: number; db_updated_at?: string }>;
 }
 export interface Finding {
   id: string; project_id: string; scan_id: string; description: string; evidence: string; rule_id: string; scanner: string; category: string; title: string;
+  cve: string | null; metadata: { package?: string; installed_version?: string; fixed_version?: string | null; suppressed?: boolean };
   cwe: string | null; original_severity: string | null; severity: string; status: string; file: string | null; line_start: number | null; created_at: string;
 }
 export interface NewProject {
@@ -50,7 +51,10 @@ export const api = {
   readiness: () => request<Readiness>('/health/ready'),
   projects: () => request<Project[]>('/api/projects'),
   scans: () => request<Scan[]>('/api/scans'),
-  findings: (scanId = '') => request<Finding[]>(`/api/findings${scanId ? `?scan_id=${encodeURIComponent(scanId)}` : ''}`),
+  findings: (filters: Record<string, string> = {}) => {
+    const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value && value !== 'ALL'));
+    return request<Finding[]>(`/api/findings?${params}`);
+  },
   createProject: (data: NewProject) => request<Project>('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
   addRepository: (id: string, url: string, default_branch: string) => request<Repository>(`/api/projects/${id}/repositories`, { method: 'POST', body: JSON.stringify({ url, default_branch }) }),
 };

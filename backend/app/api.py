@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_session
-from .models import AIAnalysis, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
+from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
 from .scanner_catalog import scan_configuration
 from .schemas import (
     AIAnalysisOut,
@@ -53,7 +53,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 4, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
+    return {**counts, "stage": 5, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])
@@ -120,16 +120,17 @@ def list_findings(
     scan_id: uuid.UUID | None = None,
     severity: Severity | None = None,
     scanner: Scanner | None = None,
+    category: Category | None = None,
     status: FindingStatus | None = None,
     limit: Limit = 100,
 ):
-    query = select(Finding).order_by(Finding.created_at.desc()).limit(limit)
+    query = select(Finding).order_by(Finding.created_at.desc(), Finding.id).limit(limit)
     if project_id:
         require_project(db, project_id)
         query = query.where(Finding.project_id == project_id)
     if scan_id:
         query = query.where(Finding.scan_id == scan_id)
-    for field, value in [(Finding.severity, severity), (Finding.scanner, scanner), (Finding.status, status)]:
+    for field, value in [(Finding.severity, severity), (Finding.scanner, scanner), (Finding.status, status), (Finding.category, category)]:
         if value is not None:
             query = query.where(field == value)
     return db.scalars(query).all()

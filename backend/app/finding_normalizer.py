@@ -135,3 +135,40 @@ def normalize_semgrep(results, *, project_id, repository_id, scan_id, commit_sha
             },
         ))
     return findings
+
+
+def normalize_trivy(results, *, project_id, repository_id, scan_id, commit_sha):
+    from .scanner_catalog import TRIVY_VERSION
+
+    configuration_titles = {
+        'DS-0001': 'Dockerfile: плавающий тег базового образа',
+        'DS-0002': 'Dockerfile: запуск от root',
+        'DS-0026': 'Dockerfile: отсутствует HEALTHCHECK',
+    }
+    findings, seen = [], set()
+    for result in results:
+        dependency = result['category'] == 'dependency'
+        identity = {
+            'repository_id': str(repository_id), 'scanner': 'trivy',
+            **{key: result.get(key) for key in ('category', 'rule_id', 'file', 'line_start', 'line_end',
+                                               'package', 'installed_version', 'package_id', 'ecosystem')},
+        }
+        fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        metadata = {key: result[key] for key in ('ecosystem', 'package', 'installed_version', 'fixed_version', 'package_id', 'suppressed') if key in result}
+        metadata.update(repository_id=str(repository_id), commit_sha=commit_sha, scanner_version=TRIVY_VERSION,
+                        scan_scope='branch_snapshot', source_redacted=True, severity_source='trivy', review_required=True)
+        findings.append(Finding(
+            project_id=project_id, scan_id=scan_id, scanner=Scanner.TRIVY,
+            category=Category(result['category']),
+            title=(f"{result['rule_id']}: {result['package']}" if dependency else configuration_titles.get(result['rule_id'], f"Конфигурация: {result['rule_id']}"))[:300],
+            description=('Известная уязвимость в указанной версии зависимости. Проверьте применимость и обновление пакета.' if dependency
+                         else 'Конфигурация не прошла встроенную проверку Trivy. Проверьте правило и контекст перед исправлением.'),
+            severity=Severity(result['severity']), original_severity=result['severity'],
+            file=result['file'], line_start=result['line_start'], line_end=result['line_end'],
+            rule_id=result['rule_id'], cve=result.get('cve'), cwe=None, evidence='[REDACTED]',
+            status=FindingStatus.OPEN, fingerprint=fingerprint, extra=metadata,
+        ))
+    return findings

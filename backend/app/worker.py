@@ -9,15 +9,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from .config import get_settings
-from .finding_normalizer import normalize_gitleaks, normalize_semgrep
+from .finding_normalizer import normalize_gitleaks, normalize_semgrep, normalize_trivy
 from .gitleaks_runner import GitleaksError, run_gitleaks
 from .models import Repository, Scan, ScanJob, ScanStatus
 from .repository_checkout import (
     RepositoryCheckoutError,
     checkout_repository,
 )
-from .scanner_catalog import RULES_SHA256, SCANNERS, SEMGREP_VERSION, scan_configuration
+from .scanner_catalog import RULES_SHA256, SCANNERS, SEMGREP_VERSION, TRIVY_VERSION, scan_configuration
 from .semgrep_runner import SemgrepError, run_semgrep
+from .trivy_runner import TrivyError, run_trivy
 
 
 def now():
@@ -193,6 +194,7 @@ def execute_job(data):
         for name, runner, normalizer, expected_error in (
             ("gitleaks", run_gitleaks, normalize_gitleaks, GitleaksError),
             ("semgrep", run_semgrep, normalize_semgrep, SemgrepError),
+            ("trivy", run_trivy, normalize_trivy, TrivyError),
         ):
             with sessions().begin() as db:
                 job, scan = active_records(db, data)
@@ -202,16 +204,18 @@ def execute_job(data):
             try:
                 report = runner(repository_path)
                 update_progress(data, ScanStatus.NORMALIZING)
-                results = report.findings if name == "semgrep" else report
+                results = report if name == "gitleaks" else report.findings
                 findings = normalizer(results, project_id=data.project_id, repository_id=data.repository_id,
                                       scan_id=data.scan_id, commit_sha=commit_sha)
                 summary = {
                     "status": "COMPLETED", "finding_count": len(findings),
-                    "version": SEMGREP_VERSION if name == "semgrep" else "8.30.1",
+                    "version": {"gitleaks": "8.30.1", "semgrep": SEMGREP_VERSION, "trivy": TRIVY_VERSION}[name],
                     "scope": "branch_snapshot", "source_redacted": True,
                 }
                 if name == "semgrep":
                     summary.update(scanned_files=report.scanned_files, rules_sha256=RULES_SHA256)
+                elif name == "trivy":
+                    summary.update(report.summary)
                 else:
                     summary["secrets_redacted"] = True
                 # Each scanner's findings and status commit together. Another scanner's
