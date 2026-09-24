@@ -177,6 +177,7 @@ def test_runner_environment_policy_and_stale_db(tmp_path, monkeypatch, stale):
 
 
 def test_timeout_kills_process_group(tmp_path, monkeypatch):
+    monkeypatch.setattr(trivy_runner, '_prefer_child_oom_victim', lambda pid: None)
     killed = []
     class Process:
         pid = 123

@@ -142,13 +142,38 @@ def parse_trivy_report(data, allowed_files):
     return TrivyReport(findings, {'result_files': len(targets), 'raw_category_counts': counts})
 
 
+def _prefer_child_oom_victim(pid):
+    # If the container runs out of memory, preserve the coordinator and its DB state.
+    try:
+        Path(f'/proc/{pid}/oom_score_adj').write_text('500')
+    except OSError:
+        pass
+
+
+def _log_memory(phase):
+    try:
+        root = Path('/sys/fs/cgroup')
+        values = dict(line.split() for line in (root / 'memory.stat').read_text().splitlines())
+        current = (root / 'memory.current').read_text().strip()
+        fields = ' '.join(f'{key}={values.get(key, "unknown")}' for key in ('anon', 'file', 'file_dirty', 'file_writeback'))
+        print(f'TRIVY_MEMORY phase={phase} current={current} {fields}', flush=True)
+    except (OSError, ValueError):
+        pass
+
+
 def _run(command, cwd, environment, log, report=None, timeout=300):
     with log.open('wb') as output:
         process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
                                    stdout=output, stderr=output, start_new_session=True)
+        _prefer_child_oom_victim(process.pid)
         deadline = time.monotonic() + timeout
+        next_sample = 0
+        phase = 'db_update' if '--download-db-only' in command else 'analysis'
         try:
             while process.poll() is None:
+                if time.monotonic() >= next_sample:
+                    _log_memory(phase)
+                    next_sample = time.monotonic() + 5
                 if time.monotonic() >= deadline:
                     raise TrivyError(f'Trivy превысил лимит {timeout} секунд.')
                 if log.stat().st_size > 2 * 1024 * 1024 or report and report.exists() and report.stat().st_size > MAX_REPORT:
