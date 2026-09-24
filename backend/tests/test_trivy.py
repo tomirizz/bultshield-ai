@@ -151,6 +151,8 @@ def test_runner_environment_policy_and_stale_db(tmp_path, monkeypatch, stale):
     calls = []
     def run(command, cwd, env, log, report=None, timeout=300):
         assert 'PRIVATE_SOURCE' not in json.dumps(env)
+        assert cwd.parent == home / '.cache' / 'bultshield-trivy'
+        assert env['TMPDIR'] == str(cwd)
         assert '--disable-telemetry' in command
         calls.append(command)
         if '--download-db-only' in command:

@@ -10,7 +10,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 
 from .gitleaks_runner import GitleaksError, _check_size
 from .scanner_catalog import TRIVY_VERSION
@@ -184,9 +184,11 @@ def log_trivy_storage():
         mounts = [line.split() for line in Path('/proc/mounts').read_text().splitlines()]
         matching = [entry for entry in mounts if str(cache).startswith(entry[1].rstrip('/') + '/')]
         filesystem = max(matching, key=lambda entry: len(entry[1]))[2]
+        temporary_mounts = [entry for entry in mounts if gettempdir() == entry[1] or gettempdir().startswith(entry[1].rstrip('/') + '/')]
+        temporary_filesystem = max(temporary_mounts, key=lambda entry: len(entry[1]))[2]
         limit_file = Path('/sys/fs/cgroup/memory.max')
         memory_limit = limit_file.read_text().strip() if limit_file.exists() else 'unavailable'
-        print(f'TRIVY_STORAGE filesystem={filesystem} memory_limit={memory_limit} free_bytes={shutil.disk_usage(cache).free}', flush=True)
+        print(f'TRIVY_STORAGE filesystem={filesystem} default_temp_filesystem={temporary_filesystem} memory_limit={memory_limit} free_bytes={shutil.disk_usage(cache).free}', flush=True)
     except (OSError, ValueError, IndexError):
         pass
 
@@ -201,7 +203,8 @@ def run_trivy(repository):
         # Worker-owned cache persists between jobs, but no repository files are stored here.
         cache = Path.home() / '.cache' / 'bultshield-trivy'
         cache.mkdir(parents=True, exist_ok=True)
-        with TemporaryDirectory(prefix='bultshield-trivy-') as temporary:
+        # Keep OCI downloads/unpacking off platform /tmp mounts that may use RAM.
+        with TemporaryDirectory(prefix='job-', dir=cache) as temporary:
             workspace = Path(temporary)
             source = workspace / 'source'
             files = _snapshot(repository, source)
