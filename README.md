@@ -1,100 +1,29 @@
 # BultShield AI
 
-Stage 2 foundation: React dashboard, FastAPI API, and PostgreSQL. The deployment target is **Bult.ai**. Scanner execution and AI inference are intentionally not implemented at this stage.
+Stage 3: public GitHub repository → shallow checkout → Gitleaks 8.30.1 → redacted findings in PostgreSQL → dashboard.
 
-## What works
+The application, PostgreSQL and worker run on **Bult.ai**. The future LLM will also run on Bult; no external LLM API is used.
 
-- Create projects and save public GitHub repository URLs, branches, descriptions, and optional staging URLs.
-- Add more repositories to a project; reopen and refresh the page without losing data.
-- Read workspace counters, projects, scan history, findings, AI analyses, fixes, and rescans through the API.
-- Apply a versioned Alembic migration for nine application tables.
-- Build one Docker image containing the frontend and API. It waits for PostgreSQL and runs migrations before starting.
-- Inspect liveness, database readiness, and the OpenAPI contract.
+## Run a scan
 
-Scans and findings start empty. The scan button is disabled, and scan/rescan creation returns HTTP 501 without creating fake jobs. Saving a GitHub URL does not yet prove that the repository exists or is public.
+Create a project with a public GitHub URL and branch, open it, then click **Запустить Gitleaks**. The scan history refreshes every five seconds. Open **Результаты** for a completed scan to inspect its findings and masked evidence. Errors are shown in scan history.
 
-## Deployment architecture
+Only current files in the selected branch are scanned, not Git history. No repository code is executed. No private-repository credentials are accepted. Scanner settings in the target repository do not override the trusted rules. Files above 2 MiB or a checkout above 50 MiB fail explicitly. Archives and encoded payloads are not expanded. Gitleaks detection is not proof that a credential is active; HIGH is the MVP severity policy. No findings does not guarantee security.
 
-```text
-Browser → HTTPS → bultshield-app (React build + FastAPI)
-                         ↕ private PostgreSQL connection
-                     postgres + its own persistent volume
+## Bult services
 
-Later, also on Bult.ai:
-  bultshield-worker → Gitleaks / Semgrep CE / Trivy / Nuclei
-  bultshield-llm    → llama.cpp + local GGUF model
-```
+| Service | Dockerfile | Target | Network |
+| --- | --- | --- | --- |
+| bultshield-app | Dockerfile | app | Public HTTPS → 8080 |
+| bultshield-worker | backend/Dockerfile.worker | worker | Internal; no public port or volume |
+| bultshield-postgres | postgres:17-bookworm | — | Internal 5432; own persistent volume |
 
-Only App gets a public endpoint. PostgreSQL stays internal. There is no shared filesystem between services and no external LLM API. Worker and LLM are reserved for later stages and are not required to boot Stage 2.
+Both builds use repository root `.` as context. App and worker use the same private DATABASE_URL. App starts migrations; worker uses the existing schema. Do not change the initialized PostgreSQL credentials by merely editing POSTGRES_* variables. Do not delete its volume.
 
-Deployment steps and acceptance checks: [docs/BULT_DEPLOYMENT.md](docs/BULT_DEPLOYMENT.md). The repository itself is a source artifact, not evidence of a completed Bult deployment; see [docs/STATUS.md](docs/STATUS.md) for verified state.
+The shared MVP workspace has no login. Only public repositories should be scanned. At most one active scan per repository and ten jobs in the queue are accepted. The worker processes jobs serially, cleans temporary files, and marks interrupted jobs FAILED after 15 minutes without progress. Findings and success status commit in one transaction.
 
-## Repository layout
+## Checks
 
-```text
-backend/app/          FastAPI, validation, SQLAlchemy models
-backend/migrations/   Alembic migration 0001
-backend/tests/        Integration tests against real PostgreSQL
-frontend/src/         React + TypeScript + Tailwind/Vite
-scripts/start.sh      Database readiness, migrations, Uvicorn
-Dockerfile            Multi-stage production image
-compose.yaml          Local verification only
-docs/                 Deployment and data/API notes
-```
+Python 3.12; Node.js 24. Install backend/requirements-dev.txt and run `python scripts/check_backend.py` against a **local disposable *_test PostgreSQL database**. The tests refuse production databases. Run `ruff check --config backend/pyproject.toml backend scripts` and `npm ci && npm run build` inside frontend. CI additionally installs the pinned official Gitleaks CLI for a real detection/masking test.
 
-## Configuration
-
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Required private PostgreSQL URL; `postgres://`, `postgresql://`, and `postgresql+psycopg://` are accepted. |
-| `APP_ENV` | `production` on Bult, `development` locally. |
-| `PORT` | HTTP port, default `8080`. Keep Bult routing consistent with it. |
-| `FRONTEND_DIST` | Docker image already sets `/app/frontend/dist`. |
-
-Never commit `.env` or database credentials. `.env.example` contains placeholders only. Percent-encode special characters in URL credentials. No API key or model download is needed for Stage 2.
-
-## Run locally with Docker
-
-```sh
-export POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
-docker compose up --build
-```
-
-Open `http://localhost:8080`. The database uses a persistent named volume and is not published to the host. Use the same password on subsequent starts with this volume; do not reset it accidentally. This local setup is only for verification; the actual product is deployed on Bult.ai.
-
-## Develop and test
-
-Use Python 3.12 and Node.js 24. Install backend dependencies from `backend/requirements-dev.txt`; frontend dependencies are locked by `frontend/package-lock.json`.
-
-```sh
-python3.12 -m venv .venv
-.venv/bin/pip install -r backend/requirements-dev.txt
-cd frontend
-npm ci
-npm run build
-cd ..
-```
-
-For API development, set `DATABASE_URL` to a local PostgreSQL database, then run from `backend/`:
-
-```sh
-../.venv/bin/python -m app.bootstrap
-../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080
-```
-
-Use `npm run dev` in `frontend/` for a Vite development server; it proxies `/api` and `/health` to port 8080. In production FastAPI serves the compiled UI and API from the same origin.
-
-Tests require a **disposable local database ending in `_test`**. They truncate application tables and refuse nonlocal or differently named databases:
-
-```sh
-export TEST_DATABASE_URL='postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/bultshield_test'
-.venv/bin/python scripts/check_backend.py
-.venv/bin/ruff check --config backend/pyproject.toml backend scripts
-cd frontend && npm run build
-```
-
-Tests exercise real persistence, constraints and project isolation at the database level, validation, duplicate handling, finding filters, related AI/fix/rescan records, and the disabled scanner contract.
-
-## MVP access model
-
-This version has one shared demo workspace and no registration or login, as agreed in Stage 1. The `users` table reserves ownership for later authentication. Do not treat the current public demo as a private multi-user service: visitors share the same project list. Scanner findings and AI responses cannot be submitted through write endpoints yet.
+Semgrep CE, Trivy, Nuclei, AI analyses, fixes and rescan reconciliation belong to later stages. The initial schema reserves their records, but they are not enabled by Stage 3.
