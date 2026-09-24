@@ -20,7 +20,7 @@ Repository `.trivyignore`, Trivy settings, Rego policies, modules, symlinks, ins
 
 ## Database, limits and failure handling
 
-A separate step refreshes Trivy's public vulnerability database without a source target. It uses only the CLI's official registry defaults. The cache is worker-owned, separate from PostgreSQL, reused between jobs and lost on worker replacement. Database update date is recorded; data older than 24 hours, download failures, malformed reports and scanner failures produce FAILED, never a clean zero-findings success. Cached data is not silently accepted after an update failure.
+A separate step refreshes Trivy's public vulnerability database without a source target. It uses only the CLI's official registry defaults. The cache is worker-owned, separate from PostgreSQL, reused between jobs and lost on worker replacement. Database update date is recorded; data older than 24 hours, download failures, malformed reports and scanner failures produce FAILED, never a clean zero-findings success. A failed mirror may fall back to another official mirror; the update must exit successfully, metadata must be fresh and the scan must open the database. Cached data is not silently accepted after an overall update failure.
 
 The scan then uses `--offline-scan`, skips DB/Java DB/check/VEX updates, disables telemetry/version checks, and uses embedded configuration checks. Repository contents are not uploaded. This is CLI configuration, not an operating-system network sandbox. Embedded-check fallback on an empty cache and skipped pip license detection (licenses are outside this scan scope) are expected diagnostics; other WARN/ERROR/FATAL diagnostics fail conservatively to avoid silent parse failures.
 

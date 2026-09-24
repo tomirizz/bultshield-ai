@@ -253,3 +253,22 @@ def test_diagnostics_allow_only_expected_non_scan_failures(tmp_path, monkeypatch
             _run([], tmp_path, {}, tmp_path/'log')
     else:
         _run([], tmp_path, {}, tmp_path/'log')
+
+
+@pytest.mark.parametrize('returncode', [0, 1])
+def test_database_mirror_fallback_requires_successful_exit(tmp_path, monkeypatch, returncode):
+    class Process:
+        def poll(self):
+            return returncode
+    process = Process()
+    process.returncode = returncode
+    def popen(*args, **kwargs):
+        kwargs['stdout'].write(b'ERROR first mirror unavailable\nINFO alternate mirror downloaded\n')
+        kwargs['stdout'].flush()
+        return process
+    monkeypatch.setattr(subprocess, 'Popen', popen)
+    if returncode:
+        with pytest.raises(TrivyError):
+            _run(['trivy', 'fs', '--download-db-only'], tmp_path, {}, tmp_path/'log')
+    else:
+        _run(['trivy', 'fs', '--download-db-only'], tmp_path, {}, tmp_path/'log')

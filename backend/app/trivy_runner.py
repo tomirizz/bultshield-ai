@@ -161,6 +161,12 @@ def _run(command, cwd, environment, log, report=None, timeout=300):
             raise
     if process.returncode != 0:
         raise TrivyError(f'Trivy завершился с ошибкой ({process.returncode}); проверка неполная.')
+    if log.stat().st_size > 2 * 1024 * 1024:
+        raise TrivyError('Trivy превысил лимит размера диагностики.')
+    # DB mirrors can fail independently: exit 0 means a mirror succeeded. The caller
+    # additionally validates DB metadata/freshness, and the scan must open that DB.
+    if '--download-db-only' in command:
+        return
     # Trivy logs the expected embedded-check fallback at ERROR level on a fresh cache.
     diagnostics = b'\n'.join(line for line in log.read_bytes().splitlines()
                              if not (b'\tERROR\t[misconfig] Falling back to embedded checks' in line
