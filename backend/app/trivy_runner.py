@@ -164,7 +164,8 @@ def _run(command, cwd, environment, log, report=None, timeout=300):
     # Trivy logs the expected embedded-check fallback at ERROR level on a fresh cache.
     diagnostics = b'\n'.join(line for line in log.read_bytes().splitlines()
                              if not (b'\tERROR\t[misconfig] Falling back to embedded checks' in line
-                                     and b'cache does not exist at' in line))
+                                     and b'cache does not exist at' in line)
+                             and b'\tWARN\t[pip] Unable to find python `site-packages` directory. License detection is skipped.' not in line)
     if log.stat().st_size > 2 * 1024 * 1024 or re.search(rb'\b(WARN|ERROR|FATAL)\b', diagnostics):
         raise TrivyError('Trivy сообщил о неполной проверке. Проверьте доступность базы CVE и корректность файлов.')
 

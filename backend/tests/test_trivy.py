@@ -230,3 +230,26 @@ def test_snapshot_disables_full_line_ignores_and_rejects_inline(tmp_path):
     (repo/'pod.yaml').write_text('privileged: true #trivy:ignore:KSV001\n')
     with pytest.raises(TrivyError):
         _snapshot(repo, tmp_path/'other')
+
+
+@pytest.mark.parametrize('message, fails', [
+    (b'2026-01-01\tERROR\t[misconfig] Falling back to embedded checks\terr="cache does not exist at x"', False),
+    (b'2026-01-01\tWARN\t[pip] Unable to find python `site-packages` directory. License detection is skipped.', False),
+    (b'2026-01-01\tWARN\t[kubernetes] Failed to parse YAML', True),
+    (b'2026-01-01\tERROR\t[vuln] Failed to load database', True),
+])
+def test_diagnostics_allow_only_expected_non_scan_failures(tmp_path, monkeypatch, message, fails):
+    class Process:
+        returncode = 0
+        def poll(self):
+            return 0
+    def popen(*args, **kwargs):
+        kwargs['stdout'].write(message)
+        kwargs['stdout'].flush()
+        return Process()
+    monkeypatch.setattr(subprocess, 'Popen', popen)
+    if fails:
+        with pytest.raises(TrivyError):
+            _run([], tmp_path, {}, tmp_path/'log')
+    else:
+        _run([], tmp_path, {}, tmp_path/'log')
