@@ -82,6 +82,7 @@ export default function App() {
   const [search, setSearch] = useState(''); const [severity, setSeverity] = useState('ALL');
   const [createOpen, setCreateOpen] = useState(false); const [repositoryOpen, setRepositoryOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [startingScan, setStartingScan] = useState<string | null>(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('bultshield-theme') || 'dark');
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('bultshield-theme', theme); }, [theme]);
   const refresh = useCallback(async () => {
@@ -101,6 +102,36 @@ export default function App() {
   const shown = projects.filter(project => `${project.name} ${project.repositories.map(repo => repo.url).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
   const filteredFindings = findings.filter(finding => severity === 'ALL' || finding.severity === severity);
   const navigate = (next: View) => { setView(next); setNotice(''); };
+  function repositoryIsScanning(repositoryId: string) {
+    return scans.some(scan =>
+      scan.repository_id === repositoryId &&
+      ['QUEUED', 'CLONING', 'SCANNING', 'NORMALIZING', 'AI_ANALYSIS']
+        .includes(scan.status)
+    );
+  }
+
+  async function startScan(repositoryId: string) {
+    setStartingScan(repositoryId);
+    setError('');
+    setNotice('');
+
+    try {
+      await api.startScan(repositoryId);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось создать сканирование.'
+      );
+      setStartingScan(null);
+      return;
+    }
+
+    setNotice('Проверка Gitleaks добавлена в очередь.');
+    setView('activity');
+    await refresh();
+    setStartingScan(null);
+  }
   async function created(project: Project) { setCreateOpen(false); setSelectedId(project.id); setNotice(`Проект «${project.name}» сохранён в PostgreSQL.`); await refresh(); }
 
   return <div className="app-shell">
@@ -130,9 +161,56 @@ export default function App() {
           </section>
           {selected && <section className="panel project-detail"><div className="panel-heading"><div><span className="eyebrow">PROJECT DETAILS</span><h2>{selected.name}</h2>{selected.description && <p>{selected.description}</p>}</div><button className="icon-button" onClick={() => setSelectedId(null)} aria-label="Скрыть детали проекта"><X size={18} /></button></div>
             <div className="detail-toolbar"><span><GitBranch size={15} />Репозитории · {selected.repositories.length}</span><button className="text-button" onClick={() => setRepositoryOpen(true)}><Plus size={14} />Добавить репозиторий</button></div>
-            {selected.repositories.length ? selected.repositories.map(repo => <div className="repository-row" key={repo.id}><a href={repo.url} target="_blank" rel="noreferrer">{repo.url.replace('https://github.com/', '')}<ArrowUpRight size={14} /></a><span><GitBranch size={13} />{repo.default_branch}</span><small>URL сохранён</small></div>) : <p className="detail-empty">Добавьте public GitHub-репозиторий.</p>}
+            {selected.repositories.length ? (
+              selected.repositories.map(repo => (
+                <div className="repository-row" key={repo.id}>
+                  <a href={repo.url} target="_blank" rel="noreferrer">
+                    {repo.url.replace('https://github.com/', '')}
+                    <ArrowUpRight size={14} />
+                  </a>
+
+                  <span>
+                    <GitBranch size={13} />
+                    {repo.default_branch}
+                  </span>
+
+                  <button
+                    className="button secondary compact"
+                    type="button"
+                    disabled={
+                      !isReady ||
+                      startingScan !== null ||
+                      repositoryIsScanning(repo.id)
+                    }
+                    onClick={() => void startScan(repo.id)}
+                  >
+                    {startingScan === repo.id ? (
+                      <LoaderCircle size={16} className="spin" />
+                    ) : (
+                      <ScanLine size={16} />
+                    )}
+
+                    {startingScan === repo.id
+                      ? 'Добавляем…'
+                      : repositoryIsScanning(repo.id)
+                        ? 'Проверка выполняется'
+                        : 'Запустить Gitleaks'}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="detail-empty">
+                Добавьте public GitHub-репозиторий.
+              </p>
+            )}
             <div className="project-target"><Globe size={15} /><span>Staging: {selected.target_url || 'не указан'}</span></div>
-            <div className="scan-unavailable"><span><ScanLine size={17} />Сканирование будет доступно после подключения инструментов.</span><button className="button secondary" disabled>Start Security Scan</button></div>
+            <div className="scan-unavailable">
+              <span>
+                <ScanLine size={17} />
+                Gitleaks проверяет текущие файлы выбранной ветки.
+                История Git не проверяется. Найденные секреты скрываются.
+              </span>
+            </div>
           </section>}
           <div className="bottom-grid"><section className="panel scanner-panel"><div className="panel-heading"><div><h2>Security toolkit</h2><p>Четыре инструмента · один формат findings</p></div><span className="tag neutral">Следующий этап</span></div><div className="scanner-list">{tools.map(tool => <div className="scanner-row" key={tool.name}><div className="tool-icon"><tool.icon size={18} /></div><div><strong>{tool.name}</strong><small>{tool.role}</small></div><span className="tool-status"><Circle size={7} />Не подключён</span></div>)}</div></section>
             <section className="panel pipeline-panel"><div className="panel-heading"><div><h2>От находки к результату</h2><p>Целевой цикл продукта</p></div><ArrowUpRight size={17} /></div><div className="pipeline">{[{ name: 'Detect', desc: 'Найти уязвимости', icon: ScanLine }, { name: 'Understand', desc: 'Объяснить с помощью AI', icon: BrainCircuit }, { name: 'Fix', desc: 'Предложить исправление', icon: CodeXml }, { name: 'Verify', desc: 'Проверить повторным scan', icon: ShieldCheck }].map((step, index) => <div className="pipeline-item" key={step.name}><span className="pipeline-number">0{index + 1}</span><step.icon size={17} /><strong>{step.name}</strong><span>{step.desc}</span></div>)}</div><div className="pipeline-foot"><span className="small-dot" />Исправление применяет пользователь</div></section></div>
