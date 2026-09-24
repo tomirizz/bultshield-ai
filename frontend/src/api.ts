@@ -38,6 +38,11 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
 }
 
 export const api = {
+  startScan: (repositoryId: string) =>
+    request<Scan>('/api/scans', {
+      method: 'POST',
+      body: JSON.stringify({ repository_id: repositoryId }),
+    }),
   overview: () => request<Overview>('/api/overview'),
   readiness: () => request<Readiness>('/health/ready'),
   projects: () => request<Project[]>('/api/projects'),
