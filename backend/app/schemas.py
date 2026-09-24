@@ -86,6 +86,8 @@ class ScanOut(Schema):
     started_at: datetime | None
     completed_at: datetime | None
     error_message: str | None
+    scanner_config: dict
+    scanner_results: dict
 
 
 class FindingOut(Schema):

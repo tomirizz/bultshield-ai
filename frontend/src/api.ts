@@ -14,9 +14,11 @@ export interface Readiness {
 }
 export interface Scan {
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
+  error_message: string | null;
+  scanner_results: { gitleaks?: { finding_count?: number; status: string } };
 }
 export interface Finding {
-  id: string; project_id: string; scanner: string; category: string; title: string;
+  id: string; project_id: string; scan_id: string; description: string; evidence: string; rule_id: string; scanner: string; category: string; title: string;
   severity: string; status: string; file: string | null; line_start: number | null; created_at: string;
 }
 export interface NewProject {
@@ -26,7 +28,8 @@ export interface NewProject {
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } });
-  const data = await response.json();
+  const data = await response.json().catch(() => null);
+  if (!data) throw new Error(`Сервис временно недоступен (HTTP ${response.status}). Повторите позже.`);
   if (!response.ok) {
     const detail = data.detail;
     const message = typeof detail === 'string' ? detail : Array.isArray(detail)
@@ -38,11 +41,16 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
 }
 
 export const api = {
+  startScan: (repositoryId: string) =>
+    request<Scan>('/api/scans', {
+      method: 'POST',
+      body: JSON.stringify({ repository_id: repositoryId }),
+    }),
   overview: () => request<Overview>('/api/overview'),
   readiness: () => request<Readiness>('/health/ready'),
   projects: () => request<Project[]>('/api/projects'),
   scans: () => request<Scan[]>('/api/scans'),
-  findings: () => request<Finding[]>('/api/findings'),
+  findings: (scanId = '') => request<Finding[]>(`/api/findings${scanId ? `?scan_id=${encodeURIComponent(scanId)}` : ''}`),
   createProject: (data: NewProject) => request<Project>('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
   addRepository: (id: string, url: string, default_branch: string) => request<Repository>(`/api/projects/${id}/repositories`, { method: 'POST', body: JSON.stringify({ url, default_branch }) }),
 };

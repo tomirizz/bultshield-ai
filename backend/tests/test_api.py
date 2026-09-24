@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from app.models import AIAnalysis, Category, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, Scanner, ScanStatus, Severity, User
+from app.models import AIAnalysis, Category, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 
@@ -94,15 +94,52 @@ def test_missing_project_and_unknown_api_are_404(client):
     assert client.get("/api/projects?limit=50000").status_code == 422
 
 
-def test_no_fake_scans_or_ai_results(client):
+def test_scan_is_queued_without_fake_results(client, db):
     project = make_project(client)
-    response = client.post("/api/scans", json={"repository_id": project["repositories"][0]["id"]})
-    assert response.status_code == 501
-    assert response.json()["detail"]["code"] == "SCANNERS_NOT_CONNECTED"
-    assert client.post("/api/rescans", json={"original_scan_id": str(uuid.uuid4())}).status_code == 501
-    for endpoint in ["scans", "findings", "ai-analyses", "fixes", "rescans"]:
+    repository_id = project["repositories"][0]["id"]
+
+    response = client.post(
+        "/api/scans",
+        json={"repository_id": repository_id},
+    )
+    assert response.status_code == 202, response.text
+    scan = response.json()
+    assert scan["status"] == "QUEUED"
+    assert scan["project_id"] == project["id"]
+    assert scan["repository_id"] == repository_id
+
+    job = db.scalar(
+        select(ScanJob).where(
+            ScanJob.scan_id == uuid.UUID(scan["id"])
+        )
+    )
+    assert job is not None
+    assert job.status == "QUEUED"
+
+    duplicate = client.post(
+        "/api/scans",
+        json={"repository_id": repository_id},
+    )
+    assert duplicate.status_code == 409
+    assert client.get("/api/overview").json()["scans"] == 1
+    assert db.scalar(select(func.count()).select_from(ScanJob)) == 1
+
+    for endpoint in ["findings", "ai-analyses", "fixes", "rescans"]:
         assert client.get(f"/api/{endpoint}").json() == []
-    assert client.get("/api/overview").json()["scans"] == 0
+
+    assert client.post(
+        "/api/rescans",
+        json={"original_scan_id": scan["id"]},
+    ).status_code == 501
+
+
+def test_scan_rejects_missing_repository(client):
+    response = client.post(
+        "/api/scans",
+        json={"repository_id": str(uuid.uuid4())},
+    )
+    assert response.status_code == 404
+    assert client.get("/api/scans").json() == []
 
 
 def test_findings_contract_filters_and_related_records(client, db):
@@ -181,7 +218,7 @@ def test_database_enforces_finding_severity_and_status(client, db):
 def test_openapi_and_security_headers(client):
     result = client.get("/api/openapi.json")
     assert result.status_code == 200
-    assert result.json()["info"]["version"] == "0.2.0"
+    assert result.json()["info"]["version"] == "0.3.0"
     assert result.headers["x-content-type-options"] == "nosniff"
     assert result.headers["cache-control"] == "no-store"
     assert "/api/projects" in result.json()["paths"]
