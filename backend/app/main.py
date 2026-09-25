@@ -7,11 +7,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from .api import router
 from .config import get_settings
 from .database import get_engine
+from .security_dashboard import router as dashboard_router
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="BultShield AI", version="0.5.0", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(title="BultShield", version="0.7.0", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
     app.include_router(router)
+    app.include_router(dashboard_router)
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request, exc):
@@ -32,7 +34,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health/live")
     def liveness():
-        return {"status": "ok", "app": "bultshield-ai", "stage": 6}
+        return {"status": "ok", "app": "bultshield-ai", "stage": 7}
 
     @app.get("/health/ready")
     def readiness():
@@ -49,7 +51,7 @@ def create_app() -> FastAPI:
             "database": "connected",
             "schema_revision": revision,
             "environment": get_settings().app_env,
-            "stage": 6,
+            "stage": 7,
             "scanners_enabled": True,
             "ai_enabled": False,
         }

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Activity, ArrowRight, ArrowUpRight, Blocks, Check, ChevronRight, Circle, CodeXml, Database, ExternalLink, FolderGit2, GitBranch, Globe, KeyRound, LayoutDashboard, LoaderCircle, Moon, Package, Plus, RefreshCw, ScanLine, Search, Server, ShieldCheck, ShieldEllipsis, Sun, X } from 'lucide-react';
+import { Activity, Blocks, Check, ChevronRight, Circle, CodeXml, Database, ExternalLink, FolderGit2, GitBranch, KeyRound, LayoutDashboard, LoaderCircle, Moon, Package, Plus, RefreshCw, ScanLine, Search, Server, ShieldCheck, ShieldEllipsis, Sun, X } from 'lucide-react';
 import { api } from './api';
-import type { Finding, NewProject, Overview, Project, Readiness, Scan } from './api';
+import type { NewProject, Overview, Project, Readiness, Scan } from './api';
+
+import { FindingDetail, FindingsPage, ProjectDashboard, ScanHistory, SecuritySummary, go, readRoute } from './SecurityPages';
 
 type View = 'workspace' | 'findings' | 'activity' | 'system';
 const nav = [
@@ -16,9 +18,6 @@ const tools = [
   { name: 'Semgrep CE', role: 'Проверка кода', icon: CodeXml },
   { name: 'Trivy', role: 'Зависимости и конфигурация', icon: Package },
 ];
-const statusLabels: Record<string, string> = { OPEN: 'Открыта', AI_ANALYZED: 'Разобрана', FIX_PROPOSED: 'Предложено исправление', FIX_APPLIED: 'Исправление внесено', RECHECKING: 'Повторная проверка', VERIFIED_FIXED: 'Исправлена', STILL_DETECTED: 'Обнаружена повторно', QUEUED: 'В очереди', CLONING: 'Загрузка репозитория', SCANNING: 'Проверка', ANALYSING: 'Обработка результатов', NORMALIZING: 'Сохранение результатов', AI_ANALYSIS: 'Разбор результатов', COMPLETED: 'Завершено', FAILED: 'Ошибка', PENDING: 'Ожидает запуска', RUNNING: 'Выполняется' };
-const statusLabel = (value: string) => statusLabels[value] || value;
-const categoryLabels: Record<string, string> = { secret: 'Секреты', code: 'Код', dependency: 'Зависимости', configuration: 'Конфигурации', web: 'Веб' };
 const date = (value: string) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
 function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
@@ -74,22 +73,20 @@ function EmptyState({ icon, title, children, action }: { icon: ReactNode; title:
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('workspace');
+  const [route, setRoute] = useState(readRoute);
+  const view = route.view;
+  const [pageRevision, setPageRevision] = useState(0);
+  useEffect(() => { const changed = () => { setRoute(readRoute()); window.scrollTo(0, 0); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const [projects, setProjects] = useState<Project[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [scans, setScans] = useState<Scan[]>([]);
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [findingScanId, setFindingScanId] = useState('');
-  const [scanner, setScanner] = useState('ALL');
-  const [category, setCategory] = useState('ALL');
-  const [findingStatus, setFindingStatus] = useState('ALL');
   const [refreshFailed, setRefreshFailed] = useState(false);
   const refreshSequence = useRef(0);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
-  const [search, setSearch] = useState(''); const [severity, setSeverity] = useState('ALL');
+  const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false); const [repositoryOpen, setRepositoryOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Project | null>(null);
   const [startingScan, setStartingScan] = useState<string | null>(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('bultshield-theme') || 'dark');
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('bultshield-theme', theme); }, [theme]);
@@ -97,17 +94,16 @@ export default function App() {
     const sequence = ++refreshSequence.current;
     if (!silent) { setLoading(true); setError(''); }
     const results = await Promise.allSettled([
-      api.readiness(), api.overview(), api.projects(), api.scans(), api.findings({ scan_id: findingScanId, scanner, severity, category, status: findingStatus }),
+      api.readiness(), api.overview(), api.projects(), api.scans(),
     ] as const);
     if (sequence !== refreshSequence.current) return;
     setReadiness(results[0].status === 'fulfilled' ? results[0].value : null);
     setOverview(results[1].status === 'fulfilled' ? results[1].value : null);
     if (results[2].status === 'fulfilled') setProjects(results[2].value);
     if (results[3].status === 'fulfilled') setScans(results[3].value);
-    if (results[4].status === 'fulfilled') setFindings(results[4].value);
     setRefreshFailed(results.some(result => result.status === 'rejected'));
     setLoading(false);
-  }, [findingScanId, scanner, severity, category, findingStatus]);
+  }, []);
   useEffect(() => {
     let active = true;
     let timer: number | undefined;
@@ -118,19 +114,9 @@ export default function App() {
     void poll(true);
     return () => { active = false; window.clearTimeout(timer); ++refreshSequence.current; };
   }, [refresh]);
-  const selected = projects.find(project => project.id === selectedId);
   const isReady = readiness?.status === 'ready';
   const shown = projects.filter(project => `${project.name} ${project.repositories.map(repo => repo.url).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
-  const filteredFindings = findings;
-  const navigate = (next: View) => { setView(next); setNotice(''); };
-  function repositoryIsScanning(repositoryId: string) {
-    return scans.some(scan =>
-      scan.repository_id === repositoryId &&
-      ['QUEUED', 'CLONING', 'SCANNING', 'ANALYSING', 'NORMALIZING', 'AI_ANALYSIS']
-        .includes(scan.status)
-    );
-  }
-
+  const navigate = (next: View) => { go(next === 'workspace' ? 'projects' : next === 'activity' ? 'scans' : next); setNotice(''); };
   async function startScan(repositoryId: string) {
     setStartingScan(repositoryId);
     setError('');
@@ -149,29 +135,30 @@ export default function App() {
     }
 
     setNotice('Проверка добавлена в очередь.');
-    setView('activity');
+    go('scans');
     await refresh();
     setStartingScan(null);
   }
-  async function created(project: Project) { setCreateOpen(false); setSelectedId(project.id); setNotice(`Проект «${project.name}» создан.`); await refresh(); }
+  async function created(project: Project) { setCreateOpen(false); go('projects/' + project.id); setNotice(`Проект «${project.name}» создан.`); await refresh(); }
 
   return <div className="app-shell">
     <aside className="sidebar">
       <a className="brand" href="#" onClick={event => { event.preventDefault(); navigate('workspace'); }}><span className="brand-mark"><ShieldCheck size={23} /></span><span>BultShield</span></a>
       <div className="workspace-label"><span className="workspace-avatar">B</span><div>Рабочая область<small>Анализ репозиториев</small></div><ChevronRight size={14} /></div>
       <p className="nav-label">НАВИГАЦИЯ</p>
-      <nav aria-label="Основная навигация">{nav.map(item => <button key={item.id} className={`nav-item ${view === item.id ? 'active' : ''}`} onClick={() => navigate(item.id)} aria-current={view === item.id ? 'page' : undefined}><item.icon size={18} /><span>{item.label}</span>{item.id === 'workspace' && overview && <span className="nav-count">{overview.projects}</span>}</button>)}</nav>
-      <div className="sidebar-bottom"><p>BultShield · 0.5.0</p><p>Статический анализ кода</p></div>
+      <nav aria-label="Основная навигация">{nav.map(item => <button key={item.id} className={`nav-item ${(view === 'project' ? 'workspace' : view === 'finding' ? 'findings' : view) === item.id ? 'active' : ''}`} onClick={() => navigate(item.id)} aria-current={(view === 'project' ? 'workspace' : view === 'finding' ? 'findings' : view) === item.id ? 'page' : undefined}><item.icon size={18} /><span>{item.label}</span>{item.id === 'workspace' && overview && <span className="nav-count">{overview.projects}</span>}</button>)}</nav>
+      <div className="sidebar-bottom"><p>BultShield · 0.7.0</p><p>Статический анализ кода</p></div>
     </aside>
     <div className="app-content">
-      <header className="topbar"><div className="breadcrumbs">BultShield <ChevronRight size={13} /><span>{nav.find(item => item.id === view)?.label}</span></div><div className="topbar-actions"><span className={`connection ${isReady ? 'connected' : loading ? '' : 'disconnected'}`}><span />{loading ? 'Подключение…' : isReady ? 'Подключено' : 'Нет соединения'}</span><button className="icon-button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button><span className="user-avatar">BS</span></div></header>
+      <header className="topbar"><div className="breadcrumbs">BultShield <ChevronRight size={13} /><span>{view === 'project' ? 'Обзор проекта' : view === 'finding' ? 'Карточка находки' : nav.find(item => item.id === view)?.label}</span></div><div className="topbar-actions"><span className={`connection ${isReady ? 'connected' : loading ? '' : 'disconnected'}`}><span />{loading ? 'Подключение…' : isReady ? 'Подключено' : 'Нет соединения'}</span><button className="icon-button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button><span className="user-avatar">BS</span></div></header>
       <main className="main-content">
-        <div className="page-heading"><div><h1>{view === 'workspace' ? 'Проекты' : view === 'findings' ? 'Результаты проверок' : view === 'activity' ? 'История сканирований' : 'Состояние системы'}</h1><p>{view === 'workspace' ? 'Добавьте репозиторий GitHub и запустите проверку.' : view === 'findings' ? 'Секреты, ошибки кода, уязвимости зависимостей и конфигурации.' : view === 'activity' ? 'История запусков и результаты сканеров.' : 'Подключение к базе данных и сведения о приложении.'}</p></div><div className="heading-actions"><button className="button secondary compact" onClick={() => void refresh()} disabled={loading} aria-label="Обновить данные"><RefreshCw size={16} className={loading ? 'spin' : ''} /><span>Обновить</span></button>{view === 'workspace' && <button className="button primary" onClick={() => setCreateOpen(true)} disabled={!isReady}><Plus size={16} />Новый проект</button>}</div></div>
+        <div className="page-heading"><div><h1>{view === 'project' ? 'Обзор проекта' : view === 'finding' ? 'Карточка находки' : view === 'workspace' ? 'Проекты' : view === 'findings' ? 'Результаты проверок' : view === 'activity' ? 'История сканирований' : 'Состояние системы'}</h1><p>{view === 'project' ? 'Результаты проверок и история проекта.' : view === 'finding' ? 'Подробности результата сканирования.' : view === 'workspace' ? 'Добавьте репозиторий GitHub и запустите проверку.' : view === 'findings' ? 'Секреты, ошибки кода, уязвимости зависимостей и конфигурации.' : view === 'activity' ? 'История запусков и результаты сканеров.' : 'Подключение к базе данных и сведения о приложении.'}</p></div><div className="heading-actions"><button className="button secondary compact" onClick={() => { setPageRevision(n => n + 1); void refresh(); }} disabled={loading} aria-label="Обновить данные"><RefreshCw size={16} className={loading ? 'spin' : ''} /><span>Обновить</span></button>{view === 'workspace' && <button className="button primary" onClick={() => setCreateOpen(true)} disabled={!isReady}><Plus size={16} />Новый проект</button>}</div></div>
         {readiness?.environment === 'development' && <div className="preview-note"><Server size={14} />Локальное окружение</div>}
         {refreshFailed && <div className="alert error" role="status">Не удалось обновить данные. Показаны последние полученные результаты. Повторите обновление.</div>}
         {error && <div className="alert error" role="alert">{error}</div>}
         {notice && <div className="alert success" role="status"><Check size={16} />{notice}<button className="icon-button" onClick={() => setNotice('')} aria-label="Скрыть уведомление"><X size={15} /></button></div>}
         {view === 'workspace' && <>
+          <SecuritySummary key={pageRevision} />
           <section className="stats" aria-label="Состояние рабочего пространства">{[
             { title: 'Проекты', value: overview?.projects, icon: FolderGit2, foot: 'В рабочем пространстве' },
             { title: 'Репозитории', value: overview?.repositories, icon: GitBranch, foot: 'Подключены к проектам' },
@@ -179,73 +166,22 @@ export default function App() {
             { title: 'Находки', value: overview?.findings, icon: ShieldEllipsis, foot: 'За все проверки' },
           ].map(stat => <article className="stat" key={stat.title}><div className="stat-top"><span>{stat.title}</span><stat.icon size={17} /></div><strong>{stat.value ?? '—'}</strong><small>{stat.foot}</small></article>)}</section>
           <section className="panel projects-panel"><div className="panel-heading"><div><h2>Список проектов <span className="count-badge">{overview?.projects ?? '—'}</span></h2><p>Репозитории и настройки проверок</p></div><label className="search-box"><Search size={15} /><input aria-label="Поиск проектов" placeholder="Найти проект…" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
-            {loading && !overview ? <div className="loading-state"><LoaderCircle className="spin" size={22} />Загружаем рабочее пространство…</div> : !overview ? <EmptyState icon={<Database size={28} />} title="Нет соединения с данными">Не удалось загрузить проекты. Повторите обновление.</EmptyState> : projects.length === 0 ? <EmptyState icon={<FolderGit2 size={31} />} title="Пока нет проектов" action={<button className="button secondary" onClick={() => setCreateOpen(true)}><Plus size={16} />Добавить проект</button>}>Сохраните публичный GitHub URL и ветку, затем запустите проверку.</EmptyState> : shown.length === 0 ? <div className="simple-empty">Проекты по этому запросу не найдены.</div> : <div className="project-list">{shown.map(project => <button className={`project-row ${selectedId === project.id ? 'selected' : ''}`} key={project.id} onClick={() => setSelectedId(project.id)}><span className="project-icon"><FolderGit2 size={20} /></span><span className="project-main"><strong>{project.name}</strong><small>{project.repositories[0]?.url.replace('https://github.com/', '') || 'Репозиторий пока не добавлен'}</small></span><span className="project-branch"><GitBranch size={13} />{project.repositories[0]?.default_branch || '—'}</span><span className="project-date">{date(project.created_at)}</span><ChevronRight size={16} /></button>)}</div>}
+            {loading && !overview ? <div className="loading-state"><LoaderCircle className="spin" size={22} />Загружаем рабочее пространство…</div> : !overview ? <EmptyState icon={<Database size={28} />} title="Нет соединения с данными">Не удалось загрузить проекты. Повторите обновление.</EmptyState> : projects.length === 0 ? <EmptyState icon={<FolderGit2 size={31} />} title="Пока нет проектов" action={<button className="button secondary" onClick={() => setCreateOpen(true)}><Plus size={16} />Добавить проект</button>}>Сохраните публичный GitHub URL и ветку, затем запустите проверку.</EmptyState> : shown.length === 0 ? <div className="simple-empty">Проекты по этому запросу не найдены.</div> : <div className="project-list">{shown.map(project => <button className="project-row" key={project.id} onClick={() => go('projects/' + project.id)}><span className="project-icon"><FolderGit2 size={20} /></span><span className="project-main"><strong>{project.name}</strong><small>{project.repositories[0]?.url.replace('https://github.com/', '') || 'Репозиторий пока не добавлен'}</small></span><span className="project-branch"><GitBranch size={13} />{project.repositories[0]?.default_branch || '—'}</span><span className="project-date">{date(project.created_at)}</span><ChevronRight size={16} /></button>)}</div>}
           </section>
-          {selected && <section className="panel project-detail"><div className="panel-heading"><div><h2>{selected.name}</h2>{selected.description && <p>{selected.description}</p>}</div><button className="icon-button" onClick={() => setSelectedId(null)} aria-label="Скрыть детали проекта"><X size={18} /></button></div>
-            <div className="detail-toolbar"><span><GitBranch size={15} />Репозитории · {selected.repositories.length}</span><button className="text-button" onClick={() => setRepositoryOpen(true)}><Plus size={14} />Добавить репозиторий</button></div>
-            {selected.repositories.length ? (
-              selected.repositories.map(repo => (
-                <div className="repository-row" key={repo.id}>
-                  <a href={repo.url} target="_blank" rel="noreferrer">
-                    {repo.url.replace('https://github.com/', '')}
-                    <ArrowUpRight size={14} />
-                  </a>
-
-                  <span>
-                    <GitBranch size={13} />
-                    {repo.default_branch}
-                  </span>
-
-                  <button
-                    className="button secondary compact"
-                    type="button"
-                    disabled={
-                      !isReady ||
-                      startingScan !== null ||
-                      repositoryIsScanning(repo.id)
-                    }
-                    onClick={() => void startScan(repo.id)}
-                  >
-                    {startingScan === repo.id ? (
-                      <LoaderCircle size={16} className="spin" />
-                    ) : (
-                      <ScanLine size={16} />
-                    )}
-
-                    {startingScan === repo.id
-                      ? 'Добавляем…'
-                      : repositoryIsScanning(repo.id)
-                        ? 'Проверка выполняется'
-                        : 'Запустить проверку'}
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className="detail-empty">
-                Добавьте публичный репозиторий GitHub.
-              </p>
-            )}
-            {selected.target_url && <div className="project-target"><Globe size={15} /><span>Адрес проекта: {selected.target_url}</span></div>}
-            <div className="scan-unavailable">
-              <span>
-                <ScanLine size={17} />
-                Gitleaks ищет секреты; Semgrep проверяет Python, JavaScript и TypeScript; Trivy — поддерживаемые манифесты зависимостей, Dockerfile и Kubernetes.
-                Анализируются текущие файлы ветки, без истории Git. Исходный код и секреты скрываются.
-              </span>
-            </div>
-          </section>}
           <section className="panel scanner-panel"><div className="panel-heading"><h2>Сканеры</h2><span className="tag neutral">3 подключено</span></div><div className="scanner-list">{tools.map(tool => <div className="scanner-row" key={tool.name}><div className="tool-icon"><tool.icon size={18} /></div><div><strong>{tool.name}</strong><small>{tool.role}</small></div><span className="tool-status"><Circle size={7} />Подключён</span></div>)}</div></section>
         </>}
-        {view === 'findings' && <section className="panel"><div className="panel-heading"><div><h2>Находки <span className="count-badge">{loading ? '—' : filteredFindings.length}</span></h2><p>До 100 результатов по выбранным фильтрам</p><label className="filter-label">Сканирование<select value={findingScanId} onChange={event => { setFindings([]); setFindingScanId(event.target.value); }}><option value="">Все последние</option>{scans.map(scan => <option key={scan.id} value={scan.id}>{date(scan.created_at)} · {statusLabel(scan.status)} · {scan.id.slice(0, 8)}</option>)}</select></label></div><label className="filter-label">Сканер<select value={scanner} onChange={event => { setFindings([]); setScanner(event.target.value); }}><option value="ALL">Все сканеры</option><option value="gitleaks">Gitleaks</option><option value="semgrep">Semgrep</option><option value="trivy">Trivy</option></select></label><label className="filter-label">Уровень риска<select value={severity} onChange={event => { setFindings([]); setSeverity(event.target.value); }}><option value="ALL">Все уровни</option>{['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO', 'UNKNOWN'].map(value => <option key={value}>{value}</option>)}</select></label><label className="filter-label">Категория<select value={category} onChange={event => { setFindings([]); setCategory(event.target.value); }}><option value="ALL">Все категории</option>{Object.entries(categoryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="filter-label">Статус<select value={findingStatus} onChange={event => { setFindings([]); setFindingStatus(event.target.value); }}><option value="ALL">Все статусы</option>{['OPEN', 'AI_ANALYZED', 'FIX_PROPOSED', 'FIX_APPLIED', 'RECHECKING', 'VERIFIED_FIXED', 'STILL_DETECTED'].map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}</select></label></div>{filteredFindings.length ? <div className="result-list">{filteredFindings.map(finding => <article key={finding.id}><span className={`severity severity-${finding.severity.toLowerCase()}`}>{finding.severity}</span><div><h3>{finding.title}</h3><p>{finding.scanner} · {finding.file || finding.category}{finding.line_start ? `:${finding.line_start}` : ''}</p></div><span className="tag neutral">{statusLabel(finding.status)}</span><details><summary>Детали</summary><p>{finding.description}</p><p>Правило: {finding.rule_id}</p><p>Категория: {categoryLabels[finding.category] || finding.category}</p>{finding.cve && <p>CVE: {finding.cve}</p>}{finding.metadata.package && <p>Пакет: {finding.metadata.package} · установлен: {finding.metadata.installed_version} · исправлено в: {finding.metadata.fixed_version || 'исправленная версия не указана'}</p>}{finding.metadata.suppressed && <p>В исходной конфигурации проверка была подавлена; требуется ручная оценка.</p>}{finding.cwe && <p>CWE: {finding.cwe}</p>}<p>Исходные данные: <code>{finding.evidence}</code></p>{finding.scanner === 'semgrep' && <p>Совпадение с правилом; проверьте контекст перед исправлением.</p>}<p>Проверка: {finding.scan_id.slice(0, 8)}</p></details></article>)}</div> : <EmptyState icon={<ShieldEllipsis size={32} />} title={loading ? 'Загрузка результатов…' : 'Нет находок в выбранных результатах'}>По текущим фильтрам ничего не найдено. Измените фильтры или проверьте статус запуска во вкладке «Сканирования». Отсутствие находок не гарантирует отсутствие уязвимостей.</EmptyState>}</section>}
-        {view === 'activity' && <section className="panel"><div className="panel-heading"><div><h2>Запуски <span className="count-badge">{overview?.scans ?? '—'}</span></h2><p>Последние запуски</p></div><span className="tag neutral">Обновляется автоматически</span></div>{scans.length ? <div className="result-list">{scans.map(scan => <article key={scan.id}><ScanLine size={19} /><div><h3>{projects.find(project => project.id === scan.project_id)?.name || 'Проект'}</h3><p>{date(scan.created_at)} · {scan.commit_sha?.slice(0, 7) || 'Ожидание загрузки'}</p>{scan.current_step && <p>Этап: {({ clone: 'Загрузка репозитория', gitleaks: 'Gitleaks', semgrep: 'Semgrep', trivy: 'Trivy', normalize: 'Обработка результатов', store: 'Сохранение', completed: 'Завершено' } as Record<string, string>)[scan.current_step] || 'Обработка'}</p>}{Object.entries(scan.scanner_results).map(([name, result]) => <p key={name}>{name}: {statusLabel(result.status)}{result.finding_count !== undefined ? ` · находок: ${result.finding_count}` : ''}{result.scanned_files !== undefined ? ` · файлов: ${result.scanned_files}` : ''}{result.input_files !== undefined ? ` · входных файлов: ${result.input_files}` : ''}{result.db_updated_at ? ` · база CVE: ${date(result.db_updated_at)}` : ''}{result.error && <span className="form-error"> · {result.error}</span>}</p>)}{scan.error_message && <p className="form-error" role="alert">{scan.error_message}</p>}</div><span className={`tag ${scan.status === 'COMPLETED' ? 'mint' : 'neutral'}`}>{statusLabel(scan.status)}</span>{Object.values(scan.scanner_results).some(result => result.status === 'COMPLETED') && <button className="text-button" onClick={() => { setFindings([]); setFindingScanId(scan.id); setScanner('ALL'); setSeverity('ALL'); setCategory('ALL'); setFindingStatus('ALL'); setView('findings'); }}>Результаты <ArrowRight size={14} /></button>}</article>)}</div> : <EmptyState icon={<Activity size={31} />} title="Проверок пока нет">Откройте проект и нажмите «Запустить проверку» рядом с репозиторием.</EmptyState>}<div className="lifecycle-strip">{['QUEUED', 'CLONING', 'SCANNING', 'ANALYSING', 'COMPLETED'].map((state, i) => <span key={state}>{i > 0 && <ArrowRight size={12} />}{statusLabel(state)}</span>)}</div></section>}
+        {view === 'project' && <ProjectDashboard key={route.id + pageRevision} id={route.id} onAdd={project => { setSelected(project); setRepositoryOpen(true); }} onStart={id => void startScan(id)} busy={!isReady || startingScan !== null} />}
+        {view === 'findings' && <FindingsPage key={pageRevision} query={route.query} projects={projects} />}
+        {view === 'finding' && <FindingDetail key={route.id + pageRevision} id={route.id} query={route.query} />}
+        {view === 'activity' && <ScanHistory key={pageRevision} query={route.query} projects={projects} />}
         {view === 'system' && <>
           <section className="panel"><div className="panel-heading"><div><h2>Компоненты</h2><p>Размещены на Bult.ai</p></div></div><div className="service-grid">{[{ name: 'Приложение', desc: 'React + FastAPI', icon: LayoutDashboard, state: isReady ? 'Доступно' : 'Нет соединения', enabled: isReady }, { name: 'База данных', desc: 'PostgreSQL', icon: Database, state: isReady ? 'Подключена' : 'Нет соединения', enabled: isReady }, { name: 'Сканирование', desc: 'Gitleaks, Semgrep CE, Trivy', icon: ScanLine, state: scans.some(scan => scan.status === 'COMPLETED') ? 'Есть завершённые проверки' : 'Нет завершённых проверок', enabled: scans.some(scan => scan.status === 'COMPLETED') }].map(service => <div className="service-card" key={service.name}><service.icon size={22} /><h3>{service.name}</h3><p>{service.desc}</p><span className={`tag ${service.enabled ? 'mint' : 'neutral'}`}>{service.state}</span></div>)}</div><p className="system-note">Статус сканирования указан по истории запусков. Подробности каждого запуска доступны во вкладке «Сканирования».</p></section>
-          <section className="panel system-details"><div className="panel-heading"><h2>Сведения о приложении</h2></div><dl className="system-facts"><div><dt>Версия</dt><dd>0.5.0</dd></div><div><dt>База данных</dt><dd>{readiness?.database || 'Недоступна'}</dd></div><div><dt>Версия схемы</dt><dd>{readiness?.schema_revision || '—'}</dd></div><div><dt>Окружение</dt><dd>{readiness?.environment === 'production' ? 'Рабочее' : readiness?.environment === 'development' ? 'Локальное' : '—'}</dd></div></dl><a className="text-button" href="/api/openapi.json" target="_blank" rel="noreferrer">Описание API<ExternalLink size={13} /></a></section>
+          <section className="panel system-details"><div className="panel-heading"><h2>Сведения о приложении</h2></div><dl className="system-facts"><div><dt>Версия</dt><dd>0.7.0</dd></div><div><dt>База данных</dt><dd>{readiness?.database || 'Недоступна'}</dd></div><div><dt>Версия схемы</dt><dd>{readiness?.schema_revision || '—'}</dd></div><div><dt>Окружение</dt><dd>{readiness?.environment === 'production' ? 'Рабочее' : readiness?.environment === 'development' ? 'Локальное' : '—'}</dd></div></dl><a className="text-button" href="/api/openapi.json" target="_blank" rel="noreferrer">Описание API<ExternalLink size={13} /></a></section>
         </>}
-        <footer className="footer"><span><ShieldCheck size={14} />BultShield</span><span>Версия 0.5.0</span></footer>
+        <footer className="footer"><span><ShieldCheck size={14} />BultShield</span><span>Версия 0.7.0</span></footer>
       </main>
     </div>
     {createOpen && <ProjectForm onClose={() => setCreateOpen(false)} onSaved={project => void created(project)} />}
-    {repositoryOpen && selected && <RepositoryForm project={selected} onClose={() => setRepositoryOpen(false)} onSaved={() => { setRepositoryOpen(false); setNotice('Репозиторий сохранён.'); void refresh(); }} />}
+    {repositoryOpen && selected && <RepositoryForm project={selected} onClose={() => setRepositoryOpen(false)} onSaved={() => { setRepositoryOpen(false); setNotice('Репозиторий сохранён.'); setPageRevision(n => n + 1); void refresh(); }} />}
   </div>;
 }

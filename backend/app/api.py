@@ -53,7 +53,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 6, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
+    return {**counts, "stage": 7, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])
@@ -105,8 +105,8 @@ def add_repository(project_id: uuid.UUID, data: RepositoryCreate, db: DB):
 
 
 @router.get("/scans", response_model=list[ScanOut])
-def list_scans(db: DB, project_id: uuid.UUID | None = None, limit: Limit = 100):
-    query = select(Scan).order_by(Scan.created_at.desc()).limit(limit)
+def list_scans(db: DB, project_id: uuid.UUID | None = None, limit: Limit = 100, offset: Annotated[int, Query(ge=0)] = 0):
+    query = select(Scan).order_by(Scan.created_at.desc(), Scan.id.desc()).offset(offset).limit(limit)
     if project_id:
         require_project(db, project_id)
         query = query.where(Scan.project_id == project_id)

@@ -31,3 +31,21 @@ Python 3.12; Node.js 24. Install backend/requirements-dev.txt and run `python sc
 Nuclei, AI analyses, fixes and rescan reconciliation belong to later stages. Semgrep currently covers Python and JavaScript/TypeScript with eight local rules. See docs/STAGE_5.md for exact scope and limits.
 
 Trivy scans dependency manifests/lockfiles and Dockerfile/Kubernetes configurations. Findings retain CVE (when supplied), package, installed/fixed versions and severity. Scanner, severity, category and status filters are applied in PostgreSQL before the 100-row limit. The worker downloads the public vulnerability database into its own ephemeral cache (approximately 1.4 GiB currently; allow at least 3 GiB free for updates). Source analysis uses offline dependency resolution; stale/unavailable databases fail explicitly. No disk is added to PostgreSQL.
+
+## Stage 7 — Security dashboard
+
+The workspace and each project show severity and scanner totals from the latest
+completed scan of each repository. Repeated runs are not added together. A failed
+or running latest attempt is shown separately; previous successful results retain
+their scan dates. Repositories without a successful scan are explicitly counted.
+
+- `#/projects/<id>`: project summary, repositories and recent scan history.
+- `#/findings`: searchable, paginated findings with project, scanner, severity,
+  category, status and latest/all-history filters persisted in the URL.
+- `#/findings/<id>`: finding details, redacted evidence, rule, CVE/CWE and package versions.
+- `#/scans`: paginated history, scan status, duration, commit and scanner results.
+
+Read-only API additions: `GET /api/security-summary` and `GET /api/findings-page`.
+Both support `project_id`; findings support `scope=latest|all`, `scan_id`, `q`,
+filters, `limit` and `offset`. Existing `/api/findings` retains its array response;
+`/api/scans` now also accepts `offset`. No database migration is required.

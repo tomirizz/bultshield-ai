@@ -14,13 +14,14 @@ export interface Readiness {
 }
 export interface Scan {
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
+  started_at: string | null; completed_at: string | null;
   error_message: string | null; current_step: string | null; error_code: string | null;
   scanner_results: Record<string, { finding_count?: number; status: string; error?: string; scanned_files?: number; input_files?: number; db_updated_at?: string }>;
 }
 export interface Finding {
   id: string; project_id: string; scan_id: string; description: string; evidence: string; rule_id: string; scanner: string; category: string; title: string;
   cve: string | null; metadata: { package?: string; installed_version?: string; fixed_version?: string | null; suppressed?: boolean };
-  cwe: string | null; original_severity: string | null; severity: string; status: string; file: string | null; line_start: number | null; created_at: string;
+  cwe: string | null; original_severity: string | null; severity: string; status: string; file: string | null; line_start: number | null; line_end: number | null; created_at: string;
 }
 export interface NewProject {
   name: string; description: string; target_url: string | null;
