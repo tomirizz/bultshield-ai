@@ -75,3 +75,7 @@ checks, not evidence of Bult production execution; record that separately after 
 Trivy uses GOMEMLIMIT=32MiB and GOGC=10 on the 512 MiB Bult worker. The lower Go heap
 budget leaves room for the memory-mapped vulnerability DB and Python coordinator;
 this is a soft Go runtime budget, not a replacement for the container limit.
+During the database download, the worker also flushes its own large temporary/cache
+files and releases their reclaimable Linux page cache with posix_fadvise. This avoids
+charging the full OCI download and extracted DB to the small container for longer
+than necessary. It never clears system-wide caches or deletes the CVE database.

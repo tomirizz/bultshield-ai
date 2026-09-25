@@ -162,6 +162,33 @@ def _log_memory(phase):
         pass
 
 
+def _release_download_cache(roots):
+    """Flush worker-owned download files and release reclaimable Linux page cache.
+
+    Go's heap limit does not include OCI/database filesystem cache, which Bult also
+    charges to the 512 MiB container. Never drop system-wide caches or delete the DB.
+    """
+    if not hasattr(os, 'posix_fadvise'):
+        return
+    for root in roots:
+        for directory, folders, files in os.walk(root):
+            folders[:] = [name for name in folders if not (Path(directory) / name).is_symlink()]
+            for name in files:
+                path = Path(directory) / name
+                try:
+                    if path.is_symlink() or path.stat().st_size < 1024 * 1024:
+                        continue
+                    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                    try:
+                        os.fdatasync(fd)
+                        os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+                    finally:
+                        os.close(fd)
+                except OSError:
+                    # Downloads may replace files between discovery and opening.
+                    continue
+
+
 def _run(command, cwd, environment, log, report=None, timeout=300):
     with log.open('wb') as output:
         process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
@@ -170,9 +197,16 @@ def _run(command, cwd, environment, log, report=None, timeout=300):
             _prefer_child_oom_victim(process.pid)
         deadline = time.monotonic() + timeout
         next_sample = 0
+        next_cache_release = 0
+        cache_roots = [cwd]
+        if '--cache-dir' in command:
+            cache_roots.append(Path(command[command.index('--cache-dir') + 1]))
         phase = 'db_update' if '--download-db-only' in command else 'analysis'
         try:
             while process.poll() is None:
+                if phase == 'db_update' and time.monotonic() >= next_cache_release:
+                    _release_download_cache(cache_roots)
+                    next_cache_release = time.monotonic() + 0.5
                 if time.monotonic() >= next_sample:
                     _log_memory(phase)
                     next_sample = time.monotonic() + 5
@@ -186,6 +220,8 @@ def _run(command, cwd, environment, log, report=None, timeout=300):
                 os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             raise
+    if phase == 'db_update':
+        _release_download_cache(cache_roots)
     if process.returncode != 0:
         raise TrivyError(f'Trivy завершился с ошибкой ({process.returncode}); проверка неполная.')
     if log.stat().st_size > 2 * 1024 * 1024:

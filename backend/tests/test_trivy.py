@@ -296,3 +296,20 @@ def test_restart_before_store_publishes_no_findings(client, db, worker_db, monke
     assert all(result['scanner_results'][name]['status'] == 'FAILED' for name in ('gitleaks', 'semgrep'))
     assert client.get('/api/findings', params={'scan_id': scan['id']}).json() == []
     assert client.post('/api/scans', json={'repository_id': scan['repository_id']}).status_code == 202
+
+
+def test_download_cache_release_is_scoped_and_keeps_files(tmp_path, monkeypatch):
+    owned = tmp_path / 'cache'
+    owned.mkdir()
+    database = owned / 'db'
+    database.write_bytes(b'x' * (1024 * 1024))
+    outside = tmp_path / 'outside'
+    outside.write_bytes(b'x' * (1024 * 1024))
+    (owned / 'link').symlink_to(outside)
+    released = []
+    monkeypatch.setattr(trivy_runner.os, 'posix_fadvise', lambda *args: released.append(args), raising=False)
+    monkeypatch.setattr(trivy_runner.os, 'POSIX_FADV_DONTNEED', 4, raising=False)
+    monkeypatch.setattr(trivy_runner.os, 'fdatasync', lambda fd: None, raising=False)
+    trivy_runner._release_download_cache([owned])
+    assert len(released) == 1
+    assert database.exists() and outside.exists()
