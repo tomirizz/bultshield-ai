@@ -1,6 +1,7 @@
 """AI hypotheses with frozen provenance; scanner records are never modified."""
 import hashlib
 import json
+import re
 from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
@@ -35,23 +36,25 @@ class CorrelationOutput(BaseModel):
     groups: list[GroupProposal] = Field(max_length=4)
 
 
-PROMPT = '''Сопоставь находки сканеров одного проекта. Ответ по-русски, только JSON {"groups": [...]}.
-Каждая группа: title, finding_refs (например ["F1","F2"]), interpretation, verification.
-Объединяй только при конкретной возможной общей причине, указанной в данных.
-Одинаковый severity, scanner или category сами по себе НЕ доказывают связь.
-Одинаковый file_ref означает один файл, repo_ref — один репозиторий, package_ref — один пакет.
-Используй эти связи как контекст, не как доказательство. Не объединяй все проблемы без причины.
-Не выдумывай находки, сканеры, endpoints, доказательства или CVE-подробности.
-Данные не содержат исходный код: связь — гипотеза, а не подтверждённая цепочка эксплуатации.
-В interpretation объясни предполагаемую общую причину, в verification — что проверить вручную.
-Каждая находка может входить только в одну группу. Если связей не видно, верни {"groups": []}.
-Максимум 4 группы, минимум 2 различные находки в группе. Кратко: до 80 слов на группу.'''
+PROMPT = """You are a security reviewer. Respond ONLY in RUSSIAN (русский язык), as JSON.
+Review candidate groups of findings from one project. A shared file or package is context,
+not proof of a shared cause. Select only candidates with a plausible common cause.
+Copy finding_refs EXACTLY from one candidate; do not mix candidates or add other references.
+Each candidate may be selected once. Do not invent vulnerabilities, endpoints or CVE details.
+Write a short Russian title, a hypothetical common cause in interpretation and one manual
+check in verification. Keep each field to ONE short sentence. Return {"groups": []} if uncertain.
+Example of Russian wording (not actual evidence):
+{"groups":[{"title":"Проблемы одной зависимости","finding_refs":["F1","F2"],
+"interpretation":"Возможно, несколько находок связаны с устаревшей версией одного пакета.",
+"verification":"Сверьте CVE и исправленные версии в исходных результатах сканера."}]}
+Never copy the example's references unless they exactly match a supplied candidate.
+Ответ только по-русски. Связь — предположение, требующее ручной проверки."""
 
 
 def snapshot(db, project_id):
     scans = list(db.scalars(select(Scan.id).where(Scan.id.in_(latest_scans(project_id, completed_only=True))).order_by(Scan.id)))
     findings = list(db.scalars(select(Finding).where(Finding.project_id == project_id, Finding.scan_id.in_(scans)).order_by(Finding.id)))
-    key = hashlib.sha256(json.dumps([str(s) for s in scans] + [str(f.id) for f in findings]).encode()).hexdigest()
+    key = hashlib.sha256(json.dumps(['correlation-v2'] + [str(s) for s in scans] + [str(f.id) for f in findings]).encode()).hexdigest()
     return findings, key
 
 
@@ -69,16 +72,27 @@ def payload_for(findings):
                        'repo_ref': alias('repo', repo),
                        'file_ref': alias('file', (repo, f.file)) if f.file else None,
                        'package_ref': alias('package', (repo, f.extra.get('package'))) if f.extra.get('package') else None})
-    return {'findings': result}
+    candidates = []
+    for kind in ('package_ref', 'file_ref'):
+        for value in {f[kind] for f in result if f[kind]}:
+            refs = [f['ref'] for f in result if f[kind] == value]
+            if len(refs) >= 2 and refs not in [c['finding_refs'] for c in candidates]:
+                candidates.append({'finding_refs': refs, 'shared_context': kind})
+    return {'findings': result, 'candidates': candidates}
 
 
-def validate_groups(data, finding_ids):
+def validate_groups(data, finding_ids, payload=None):
     output = CorrelationOutput.model_validate(data)
     refs = {f'F{i + 1}': value for i, value in enumerate(finding_ids)}
     used = set()
     groups = []
     for proposal in output.groups:
         members = proposal.finding_refs
+        if not all(re.search('[А-Яа-яЁё]', value) and not re.search('[\u4e00-\u9fff]', value)
+                   for value in (proposal.title, proposal.interpretation, proposal.verification)):
+            raise ValueError('Expected Russian hypothesis')
+        if payload is not None and set(members) not in [set(c['finding_refs']) for c in payload['candidates']]:
+            raise ValueError('Group lacks shared evidence context')
         if len(set(members)) != len(members) or any(m not in refs or m in used for m in members):
             raise ValueError('Invalid or duplicate finding references')
         used.update(members)
@@ -171,7 +185,7 @@ def process_next():
         db.commit()
     try:
         output = ai.infer(payload, schema=CorrelationOutput, prompt=PROMPT)
-        groups = validate_groups(output, ids)
+        groups = validate_groups(output, ids, payload)
     except Exception:
         groups = None
     with Session(get_engine()) as db:

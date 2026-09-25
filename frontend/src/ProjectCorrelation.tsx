@@ -7,6 +7,7 @@ type Run = { id: string; status: string; model: string; total_findings: number; 
 export function ProjectCorrelation({ projectId }: { projectId: string }) {
   const [run, setRun] = useState<Run | null>(null);
   const [enabled, setEnabled] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -14,7 +15,7 @@ export function ProjectCorrelation({ projectId }: { projectId: string }) {
     async function refresh() {
       try {
         const [status, result] = await Promise.all([request<{ enabled: boolean }>('/api/ai-status'), request<Run | null>(`/api/projects/${projectId}/correlation`)]);
-        if (live) { setEnabled(status.enabled); setRun(result); }
+        if (live) { setEnabled(status.enabled); setRun(result); setLoaded(true); }
       } catch (e) { if (live) setError(e instanceof Error ? e.message : 'Не удалось загрузить группы'); }
       if (live) timer = window.setTimeout(refresh, 5000);
     }
@@ -32,7 +33,7 @@ export function ProjectCorrelation({ projectId }: { projectId: string }) {
       <button className="button secondary" disabled={!enabled || busy || pending || (run?.status === 'COMPLETED' && !run.stale)} onClick={() => void start()}>{pending ? 'Анализ выполняется…' : run?.stale ? 'Обновить связи' : run?.status === 'FAILED' ? 'Повторить анализ' : 'Найти связанные проблемы'}</button></div>
     <div className="ai-content">
       {error && <p className="alert error" role="alert">{error}</p>}
-      {!enabled && <p>Для корреляции необходимо подключить модель на Bult.ai.</p>}
+      {loaded && !enabled && <p>Для корреляции необходимо подключить модель на Bult.ai.</p>}
       <p className="summary-note">Анализируются последние успешные проверки. Модель получает безопасные описания и обезличенные связи файлов и пакетов; исходный код и секреты не передаются.</p>
       {pending && <p role="status">{run?.status === 'PENDING' ? 'Задание в очереди.' : 'Модель ищет возможные связи.'} Результат сохранится после завершения.</p>}
       {run?.error_message && <p className="alert error">{run.error_message}</p>}

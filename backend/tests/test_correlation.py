@@ -126,3 +126,12 @@ def test_shared_worker_exclusion_and_recovery(client, db, enabled, monkeypatch):
     db.commit()
     assert client.get(path).json()['status'] == 'FAILED'
     assert client.post(path).json()['status'] == 'PENDING'
+
+
+def test_language_and_unrelated_evidence_rejected():
+    output = proposal()
+    output['groups'][0]['title'] = '依赖版本问题'
+    with pytest.raises(ValueError):
+        corr.validate_groups(output, ['a', 'b'])
+    with pytest.raises(ValueError):
+        corr.validate_groups(proposal(), ['a', 'b'], {'candidates': []})
