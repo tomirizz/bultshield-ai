@@ -30,7 +30,8 @@ export interface NewProject {
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } });
-  const data = await response.json().catch(() => null);
+  const data = await response.json().catch(() => { throw new Error('Сервис вернул некорректный ответ. Повторите позже.'); });
+  if (data === null && response.ok) return data as T;
   if (!data) throw new Error(`Сервис временно недоступен (HTTP ${response.status}). Повторите позже.`);
   if (!response.ok) {
     const detail = data.detail;

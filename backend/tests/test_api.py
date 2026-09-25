@@ -218,7 +218,7 @@ def test_database_enforces_finding_severity_and_status(client, db):
 def test_openapi_and_security_headers(client):
     result = client.get("/api/openapi.json")
     assert result.status_code == 200
-    assert result.json()["info"]["version"] == "0.7.0"
+    assert result.json()["info"]["version"] == "0.8.0"
     assert result.headers["x-content-type-options"] == "nosniff"
     assert result.headers["cache-control"] == "no-store"
     assert "/api/projects" in result.json()["paths"]

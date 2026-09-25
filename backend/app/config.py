@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +10,10 @@ class Settings(BaseSettings):
 
     database_url: str
     app_env: str = "development"
+    ai_enabled: bool = False
+    ai_endpoint: str = "http://127.0.0.1:8081"
+    ai_model: str = "qwen2.5-1.5b-instruct"
+    ai_timeout_seconds: int = Field(default=240, ge=10, le=600)
     frontend_dist: Path = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
     @field_validator("database_url")

@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .config import get_settings
 from .database import get_session
 from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
 from .scanner_catalog import scan_configuration
@@ -53,7 +54,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 7, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
+    return {**counts, "stage": 8, "capabilities": {"scanners": True, "ai": get_settings().ai_enabled, "rescans": False}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])

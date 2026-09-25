@@ -49,3 +49,10 @@ Read-only API additions: `GET /api/security-summary` and `GET /api/findings-page
 Both support `project_id`; findings support `scope=latest|all`, `scan_id`, `q`,
 filters, `limit` and `offset`. Existing `/api/findings` retains its array response;
 `/api/scans` now also accepts `offset`. No database migration is required.
+
+## Stage 8 — AI explanations
+
+Findings have an optional AI explanation with recommended fix, illustrative code and
+remediation steps. Analysis runs separately from scanning; raw evidence, source files
+and arbitrary finding text never reach the model. Inference runs on a private Bult.ai
+llama.cpp service, with no external AI API. See [deployment and limits](docs/STAGE_8.md).

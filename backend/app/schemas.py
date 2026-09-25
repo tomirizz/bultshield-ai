@@ -116,6 +116,10 @@ class FindingOut(Schema):
 
 
 class AIAnalysisOut(Schema):
+    result: dict | None
+    error_message: str | None
+    started_at: datetime | None
+    completed_at: datetime | None
     id: UUID
     finding_id: UUID
     model: str

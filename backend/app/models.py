@@ -152,10 +152,13 @@ class AIAnalysis(Record, Base):
     finding_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey("findings.id", ondelete="CASCADE"), index=True)
     model: Mapped[str] = mapped_column(sa.String(200))
     status: Mapped[str] = mapped_column(
-        sa.Enum("PENDING", "COMPLETED", "FAILED", name="analysis_status", native_enum=False, create_constraint=True),
+        sa.Enum("PENDING", "RUNNING", "COMPLETED", "FAILED", name="analysis_status", native_enum=False, create_constraint=True),
         default="PENDING",
         server_default="PENDING",
     )
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSONB)
     explanation: Mapped[str | None] = mapped_column(sa.Text)
     recommended_fix: Mapped[str | None] = mapped_column(sa.Text)
     error_message: Mapped[str | None] = mapped_column(sa.Text)
