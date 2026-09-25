@@ -207,3 +207,25 @@ class ScanJob(Record, Base):
     attempts: Mapped[int] = mapped_column(default=0, server_default="0")
     locked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
     heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+
+
+class CorrelationRun(Record, Base):
+    __tablename__ = 'correlation_runs'
+    project_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('projects.id', ondelete='CASCADE'), index=True)
+    snapshot_key: Mapped[str] = mapped_column(sa.String(64))
+    finding_ids: Mapped[list] = mapped_column(JSONB)
+    total_findings: Mapped[int]
+    model: Mapped[str] = mapped_column(sa.String(200))
+    status: Mapped[str] = mapped_column(sa.String(16), default='PENDING')
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
+
+
+class SecurityIssueGroup(Record, Base):
+    __tablename__ = 'security_issue_groups'
+    run_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('correlation_runs.id', ondelete='CASCADE'), index=True)
+    title: Mapped[str] = mapped_column(sa.String(200))
+    interpretation: Mapped[str] = mapped_column(sa.Text)
+    verification: Mapped[str] = mapped_column(sa.Text)
+    finding_ids: Mapped[list] = mapped_column(JSONB)

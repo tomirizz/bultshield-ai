@@ -1,3 +1,4 @@
+import { ProjectCorrelation } from './ProjectCorrelation';
 import { AIExplanation } from './AIExplanation';
 import { useEffect, useState } from 'react';
 import type { Finding, Project, Scan } from './api';
@@ -43,7 +44,7 @@ export function ProjectDashboard({ id, onAdd, onStart, busy }: { id: string; onA
   if (!project) return <Loading error={error} />;
   return <div className="security-page"><a className="text-button" href="#/projects">← Все проекты</a><div className="project-title"><h2>{project.name}</h2><p>{project.description || 'Проверки исходного кода и зависимостей проекта.'}</p></div><SecuritySummary projectId={id} />
     <section className="panel"><div className="panel-heading"><h2>Репозитории</h2><button className="text-button" onClick={() => onAdd(project)}>Добавить репозиторий</button></div>{project.repositories.length ? project.repositories.map(repo => { const running = scans?.some(s => s.repository_id === repo.id && active(s)); return <div className="repository-row" key={repo.id}><a href={repo.url} target="_blank" rel="noreferrer">{repo.url.replace('https://github.com/', '')} ↗</a><span>{repo.default_branch}</span><button className="button secondary" disabled={busy || !scans || running} onClick={() => onStart(repo.id)}>{running ? 'Проверка выполняется' : 'Запустить проверку'}</button></div>; }) : <p className="detail-empty">Добавьте публичный репозиторий GitHub для первой проверки.</p>}</section>
-    <div className="dashboard-links"><a className="button secondary" href={`#/findings?project_id=${id}&scope=latest`}>Находки проекта →</a><a className="button secondary" href={`#/scans?project_id=${id}`}>Вся история проверок →</a></div><ScanHistory query={`project_id=${id}`} projects={[project]} compact />
+    <div className="dashboard-links"><a className="button secondary" href={`#/findings?project_id=${id}&scope=latest`}>Находки проекта →</a><a className="button secondary" href={`#/scans?project_id=${id}`}>Вся история проверок →</a></div><ProjectCorrelation key={id} projectId={id} /><ScanHistory query={`project_id=${id}`} projects={[project]} compact />
   </div>;
 }
 

@@ -10,6 +10,7 @@ from .ai_service import router as ai_router
 from .ai_service import start_service
 from .api import router
 from .config import get_settings
+from .correlation import router as correlation_router
 from .database import get_engine
 from .security_dashboard import router as dashboard_router
 
@@ -23,10 +24,11 @@ async def lifespan(app):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="BultShield", version="0.8.0", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(title="BultShield", version="0.9.0", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
     app.include_router(router)
     app.include_router(dashboard_router)
     app.include_router(ai_router)
+    app.include_router(correlation_router)
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request, exc):
@@ -47,7 +49,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health/live")
     def liveness():
-        return {"status": "ok", "app": "bultshield-ai", "stage": 8}
+        return {"status": "ok", "app": "bultshield-ai", "stage": 9}
 
     @app.get("/health/ready")
     def readiness():
@@ -64,7 +66,7 @@ def create_app() -> FastAPI:
             "database": "connected",
             "schema_revision": revision,
             "environment": get_settings().app_env,
-            "stage": 8,
+            "stage": 9,
             "scanners_enabled": True,
             "ai_enabled": get_settings().ai_enabled,
         }

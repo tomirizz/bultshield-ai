@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .database import get_engine, get_session
-from .models import AIAnalysis, Finding
+from .models import AIAnalysis, CorrelationRun, Finding
 from .schemas import AIAnalysisOut
 
 router = APIRouter(prefix='/api')
@@ -104,13 +104,13 @@ def private_endpoint(value):
     return str(ips[0]), url.port or 8080
 
 
-def infer(payload):
+def infer(payload, schema=Explanation, prompt=SYSTEM_PROMPT):
     settings = get_settings()
     host, port = private_endpoint(settings.ai_endpoint)
-    request = {'model': settings.ai_model, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT},
+    request = {'model': settings.ai_model, 'messages': [{'role': 'system', 'content': prompt},
                {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}],
                'temperature': 0.1, 'max_tokens': 1100, 'stream': False,
-               'response_format': {'type': 'json_object', 'schema': Explanation.model_json_schema()}}
+               'response_format': {'type': 'json_object', 'schema': schema.model_json_schema()}}
     connection = HTTPConnection(host, port, timeout=settings.ai_timeout_seconds)
     try:
         connection.request('POST', '/v1/chat/completions', body=json.dumps(request).encode(), headers={'Content-Type': 'application/json'})
@@ -123,14 +123,14 @@ def infer(payload):
         choice = json.loads(raw)['choices'][0]
         if choice.get('finish_reason') != 'stop':
             raise ValueError('Incomplete model response')
-        result = Explanation.model_validate_json(choice['message']['content'])
+        result = schema.model_validate_json(choice['message']['content'])
         # A model must never return credential-shaped material, even if hallucinated.
-        if not all(re.search('[А-Яа-яЁё]', value) for value in (result.explanation, result.risk, result.recommended_fix)):
+        if schema is Explanation and not all(re.search('[А-Яа-яЁё]', value) for value in (result.explanation, result.risk, result.recommended_fix)):
             raise ValueError('Expected Russian explanation')
         output = result.model_dump_json()
         if re.search(r'gh[pousr]_[A-Za-z0-9]{15,}|github_pat_[A-Za-z0-9_]{15,}|AKIA[A-Z0-9]{16}|-----BEGIN .*PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}', output):
             raise ValueError('Unsafe model output')
-        if any(len(item) > 1000 or not item.strip() for item in result.checks + result.remediation_steps):
+        if schema is Explanation and any(len(item) > 1000 or not item.strip() for item in result.checks + result.remediation_steps):
             raise ValueError('Invalid model steps')
         return result.model_dump()
     finally:
@@ -175,6 +175,7 @@ def enqueue_analysis(finding_id: UUID, db: Session = Depends(get_session)):
         db.commit()
         return previous
     count = db.scalar(select(func.count()).select_from(AIAnalysis).where(AIAnalysis.status.in_(['PENDING', 'RUNNING'])))
+    count += db.scalar(select(func.count()).select_from(CorrelationRun).where(CorrelationRun.status.in_(['PENDING', 'RUNNING'])))
     if count >= MAX_ACTIVE:
         raise HTTPException(429, 'Очередь анализа занята. Повторите позже.')
     record = AIAnalysis(finding_id=finding_id, model=get_settings().ai_model, status='PENDING')
@@ -188,7 +189,7 @@ def process_next():
     with Session(get_engine(), expire_on_commit=False) as db:
         db.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': QUEUE_LOCK})
         recover(db)
-        if db.scalar(select(AIAnalysis.id).where(AIAnalysis.status == 'RUNNING').limit(1)):
+        if db.scalar(select(AIAnalysis.id).where(AIAnalysis.status == 'RUNNING').limit(1)) or db.scalar(select(CorrelationRun.id).where(CorrelationRun.status == 'RUNNING').limit(1)):
             db.commit()
             return False
         job = db.scalar(select(AIAnalysis).where(AIAnalysis.status == 'PENDING').order_by(AIAnalysis.created_at, AIAnalysis.id).limit(1).with_for_update(skip_locked=True))
@@ -222,7 +223,8 @@ def start_service():
     def run():
         while not stop.is_set():
             try:
-                if process_next():
+                from .correlation import process_next as correlate
+                if correlate() or process_next():
                     continue
             except Exception:
                 logger.warning('AI_QUEUE_UNAVAILABLE')

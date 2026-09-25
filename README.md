@@ -56,3 +56,11 @@ Findings have an optional AI explanation with recommended fix, illustrative code
 remediation steps. Analysis runs separately from scanning; raw evidence, source files
 and arbitrary finding text never reach the model. Inference runs on a private Bult.ai
 llama.cpp service, with no external AI API. See [deployment and limits](docs/STAGE_8.md).
+
+### Stage 9 — AI correlation
+
+Project dashboards offer **Связанные проблемы**. The existing Bult-hosted model receives sanitized findings from the latest successful scan of each repository in one project. File/repository/package aliases preserve relationships without transmitting their raw names, source code or secrets. Each request currently covers at most 12 findings; the interface explicitly shows analyzed/total counts.
+
+`POST /api/projects/{id}/correlation` queues a persisted `CorrelationRun`; GET returns its status and `SecurityIssueGroup` records. The shared AI queue serializes explanation and correlation inference. Groups contain validated references to original findings, separate scanner evidence, an AI hypothesis and manual verification instructions. Unknown references and duplicate/overlapping memberships reject the entire response. Empty groups are a valid outcome. Scanner findings are never rewritten. New successful scans mark older correlations stale; failed model requests are retryable.
+
+Deployment uses the existing app and model services, with migration `0004` applied by app startup. No additional service is required. This is bounded hypothesis generation, not proof of an exploit chain or exhaustive project coverage.
