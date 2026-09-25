@@ -294,19 +294,32 @@ def run_trivy(repository):
                 raise TrivyError('База CVE Trivy устарела или имеет некорректную дату.')
             report = workspace / 'report.json'
             command = common + [
-                '--scanners', 'vuln,misconfig', '--pkg-types', 'library', '--offline-scan',
+                '--pkg-types', 'library', '--offline-scan',
                 '--skip-db-update', '--skip-java-db-update', '--skip-check-update', '--skip-vex-repo-update',
                 '--misconfig-scanners', 'dockerfile,kubernetes', '--include-non-failures',
                 '--ignorefile', str(ignore), '--include-dev-deps', '--list-all-pkgs=false',
                 '--file-patterns', 'pip:requirements.*\\.txt$',
                 '--parallel', '1', '--format', 'json', '--output', str(report), str(source),
             ]
-            print('TRIVY_ANALYSIS_STARTED', flush=True)
-            _run(command, workspace, environment, workspace / 'scan.log', report, timeout=max(0, deadline - time.monotonic()))
-            print('TRIVY_ANALYSIS_COMPLETED', flush=True)
-            if not report.is_file() or report.stat().st_size > MAX_REPORT:
-                raise TrivyError('JSON Trivy отсутствует или превышает 20 МБ.')
-            parsed = parse_trivy_report(json.loads(report.read_text()), files)
+            combined = []
+            counts = {'dependency': 0, 'configuration': 0}
+            result_files = 0
+            # Separate processes avoid holding the CVE DB and Rego evaluator in memory together.
+            for scanner in ('vuln', 'misconfig'):
+                print(f'TRIVY_{scanner.upper()}_STARTED', flush=True)
+                report.unlink(missing_ok=True)
+                _run(command + ['--scanners', scanner], workspace, environment,
+                     workspace / f'{scanner}.log', report, timeout=max(0, deadline - time.monotonic()))
+                if not report.is_file() or report.stat().st_size > MAX_REPORT:
+                    raise TrivyError('JSON Trivy отсутствует или превышает 20 МБ.')
+                part = parse_trivy_report(json.loads(report.read_text()), files)
+                combined.extend(part.findings)
+                result_files += part.summary['result_files']
+                for category, count in part.summary['raw_category_counts'].items():
+                    counts[category] += count
+                _release_download_cache([cache, workspace])
+                print(f'TRIVY_{scanner.upper()}_COMPLETED', flush=True)
+            parsed = TrivyReport(combined, {'result_files': result_files, 'raw_category_counts': counts})
             parsed.summary.update(input_files=len(files), db_updated_at=metadata['UpdatedAt'],
                                   scope='supported_manifests_and_configurations', checks='embedded',
                                   version=TRIVY_VERSION)

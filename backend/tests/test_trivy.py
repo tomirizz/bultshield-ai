@@ -164,7 +164,7 @@ def test_runner_environment_policy_and_stale_db(tmp_path, monkeypatch, stale):
             assert '--offline-scan' in command and '--skip-db-update' in command
             assert '--ignorefile' in command and '--skip-check-update' in command
             data = raw_report()
-            data['Results'] = data['Results'][:1]
+            data['Results'] = data['Results'][:1] if command[-1] == 'vuln' else []
             report.write_text(json.dumps(data))
     monkeypatch.setattr(trivy_runner, '_run', run)
     if stale:
@@ -173,7 +173,7 @@ def test_runner_environment_policy_and_stale_db(tmp_path, monkeypatch, stale):
         assert len(calls) == 1
     else:
         assert len(run_trivy(repo).findings) == 1
-        assert len(calls) == 2
+        assert len(calls) == 3
 
 
 def test_timeout_kills_process_group(tmp_path, monkeypatch):

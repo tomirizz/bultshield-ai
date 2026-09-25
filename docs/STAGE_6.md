@@ -79,3 +79,6 @@ During the database download, the worker also flushes its own large temporary/ca
 files and releases their reclaimable Linux page cache with posix_fadvise. This avoids
 charging the full OCI download and extracted DB to the small container for longer
 than necessary. It never clears system-wide caches or deletes the CVE database.
+Trivy dependency and configuration checks run in two sequential child processes
+under the same deadline, avoiding simultaneous CVE database and Rego evaluator memory.
+Both JSON reports must pass validation before the combined Trivy result is accepted.
