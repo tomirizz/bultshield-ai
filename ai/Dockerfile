@@ -13,6 +13,7 @@ PY
 
 FROM ghcr.io/ggml-org/llama.cpp:server@sha256:6257697a7f5d034b8fb499ddb07af3e250506352f94102054252a23f3b85e0af AS model
 COPY --from=weights --chmod=444 /model.gguf /models/model.gguf
+RUN chmod 755 /models
 USER 10001:10001
 EXPOSE 8080
 ENTRYPOINT ["/app/llama-server"]
