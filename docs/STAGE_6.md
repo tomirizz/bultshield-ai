@@ -71,3 +71,7 @@ heartbeat, lost ownership, pipeline order, atomic rollback, repeat processing,
 known partial failures, crash recovery, workspace locking/cleanup, and timeouts.
 Existing parser and real-CLI tests remain required. Local tests/CI are predeployment
 checks, not evidence of Bult production execution; record that separately after rollout.
+
+Trivy uses GOMEMLIMIT=32MiB and GOGC=10 on the 512 MiB Bult worker. The lower Go heap
+budget leaves room for the memory-mapped vulnerability DB and Python coordinator;
+this is a soft Go runtime budget, not a replacement for the container limit.

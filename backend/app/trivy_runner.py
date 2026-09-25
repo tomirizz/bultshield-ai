@@ -243,7 +243,7 @@ def run_trivy(repository):
             environment = {
                 'PATH': os.pathsep.join([str(Path(executable).parent), os.defpath]),
                 'HOME': str(workspace), 'TMPDIR': str(workspace), 'LANG': 'C.UTF-8',
-                'GOMAXPROCS': '1', 'GOMEMLIMIT': '96MiB', 'GOGC': '20',
+                'GOMAXPROCS': '1', 'GOMEMLIMIT': '32MiB', 'GOGC': '10',
             }
             deadline = time.monotonic() + timeout_seconds('TRIVY_TIMEOUT_SECONDS', 600)
             common = [executable, 'fs', '--config', str(config), '--cache-dir', str(cache),
