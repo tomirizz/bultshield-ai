@@ -28,7 +28,7 @@ duplicates. At most five queued/running analyses are allowed, one inference at a
 Interrupted work becomes failed after its timeout plus 60 seconds; queued jobs survive
 application restarts. Failures never alter scan/finding status or create fixes.
 
-The model receives normalized enums, approved descriptions from the trusted local
+The model receives normalized enums, approved descriptions and remediation guidance/examples from the trusted local
 rule catalog, validated numeric CVE/CWE identifiers, language and line number.
 Arbitrary titles, descriptions, paths, metadata, source code and evidence are **not**
 transmitted. Location remains visible from the original finding in the UI. This is

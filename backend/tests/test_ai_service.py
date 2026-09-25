@@ -124,3 +124,15 @@ def test_invalid_or_truncated_model_output_rejected(enabled, monkeypatch):
         ai.infer({})
     Connection.read = lambda self, size: json.dumps({'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result())}}]}).encode()
     assert ai.infer({}) == result()
+
+
+def test_trusted_guidance_is_specific_to_rule():
+    f = Finding(scanner=Scanner.SEMGREP, severity=Severity.HIGH, category=Category.CODE,
+                rule_id='bultshield.python-dynamic-eval', file='sample.py')
+    payload = ai.safe_finding(f)
+    assert 'json.loads' in payload['reference_example']
+    assert 'shell=False' not in payload['reference_example']
+    f.rule_id = 'bultshield.python-unsafe-yaml'
+    assert 'yaml.safe_load' in ai.safe_finding(f)['reference_example']
+    f.scanner, f.category, f.rule_id = Scanner.TRIVY, Category.CONFIGURATION, 'DS-0002'
+    assert 'USER 10001' in ai.safe_finding(f)['reference_example']
