@@ -25,7 +25,7 @@ interface Summary { total: number; severity: Record<string, number>; scanners: R
 export function SecuritySummary({ projectId = '' }: { projectId?: string }) {
   const { data, error } = useData<Summary>('summary:' + projectId, () => request('/api/security-summary?' + new URLSearchParams({ ...(projectId ? { project_id: projectId } : {}) })));
   if (!data) return <Loading error={error} />;
-  const scope = { project_id: projectId, scope: 'latest' };
+  const scope: Record<string, string> = projectId ? { project_id: projectId, scope: 'latest' } : { scope: 'latest' };
   return <section className="security-summary" aria-label="Сводка безопасности"><div className="summary-heading"><div><h2>Сводка безопасности</h2><p>Последние успешные проверки · проверено репозиториев: {data.scanned_repositories} из {data.repository_count}</p></div><a className="text-button" href={`#/findings?${new URLSearchParams(scope)}`}>Все находки · {data.total} →</a></div>
     <div className="stats risk-stats">{['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(level => <a className={`stat risk-${level.toLowerCase()}`} key={level} href={`#/findings?${new URLSearchParams({ ...scope, severity: level })}`}><div className="stat-top">{level.charAt(0) + level.slice(1).toLowerCase()}</div><strong>{data.severity[level]}</strong><small>Открыть находки →</small></a>)}</div>
     <div className="scanner-counts">{Object.entries(data.scanners).map(([scanner, count]) => <a key={scanner} href={`#/findings?${new URLSearchParams({ ...scope, scanner })}`}><span>{scannerNames[scanner] || scanner}</span><strong>{count}</strong></a>)}<span className="summary-extra">Info: {data.severity.INFO} · Unknown: {data.severity.UNKNOWN}</span></div>
