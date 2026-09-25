@@ -1,24 +1,26 @@
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from .config import get_settings
-from .finding_normalizer import normalize_gitleaks, normalize_semgrep, normalize_trivy
-from .gitleaks_runner import GitleaksError, run_gitleaks
 from .models import Repository, Scan, ScanJob, ScanStatus
-from .repository_checkout import (
-    RepositoryCheckoutError,
-    checkout_repository,
-)
-from .scanner_catalog import RULES_SHA256, SCANNERS, SEMGREP_VERSION, TRIVY_VERSION, scan_configuration
-from .semgrep_runner import SemgrepError, run_semgrep
-from .trivy_runner import TrivyError, log_trivy_storage, run_trivy
+from .repository_checkout import RepositoryCheckoutError
+from .scan_engine import log_event, run_pipeline
+from .scan_runtime import cleanup_orphans
+from .scanner_catalog import SCANNERS, scan_configuration
+from .trivy_runner import log_trivy_storage
+
+WORKER_ID = str(uuid4())
+HEARTBEAT_SECONDS = 15
+STALE_SECONDS = 180
 
 
 def now():
@@ -54,7 +56,7 @@ class JobNoLongerActive(RuntimeError):
     pass
 
 
-def mark_failed(db, job, message):
+def mark_failed(db, job, message, code="WORKER_FAILED"):
     timestamp = now()
     job.status = "FAILED"
     job.heartbeat_at = timestamp
@@ -63,16 +65,17 @@ def mark_failed(db, job, message):
     if scan is not None:
         scan.status = ScanStatus.FAILED
         scan.error_message = message
+        scan.error_code = code
         scan.completed_at = timestamp
         results = dict(scan.scanner_results or {})
         for scanner in scan.scanner_config.get("scanners", list(SCANNERS)):
             if results.get(scanner, {}).get("status") != "COMPLETED":
-                results[scanner] = {"status": "FAILED", "error": message}
+                results[scanner] = {**results.get(scanner, {}), "status": "FAILED", "error": message, "error_code": code}
         scan.scanner_results = results
 
 
 def recover_stale_jobs():
-    cutoff = now() - timedelta(minutes=15)
+    cutoff = now() - timedelta(seconds=STALE_SECONDS)
 
     with sessions().begin() as db:
         jobs = db.scalars(
@@ -95,6 +98,7 @@ def recover_stale_jobs():
                 db,
                 job,
                 "Worker перестал отвечать. Запустите новую проверку.",
+                code="WORKER_LOST",
             )
 
 
@@ -125,15 +129,18 @@ def claim_job():
         timestamp = now()
 
         job.status = "RUNNING"
+        job.worker_id = WORKER_ID
         job.attempts += 1
         job.locked_at = timestamp
         job.heartbeat_at = timestamp
 
         scan.status = ScanStatus.CLONING
+        scan.current_step = "clone"
+        scan.error_code = None
         scan.started_at = timestamp
         scan.completed_at = None
         scan.error_message = None
-        scan.scanner_config = scan_configuration(repository.default_branch)
+        scan.scanner_config = scan_configuration(scan.scanner_config.get("branch", repository.default_branch))
         scan.scanner_results = {name: {"status": "PENDING"} for name in SCANNERS}
 
         return JobData(
@@ -142,7 +149,7 @@ def claim_job():
             project_id=scan.project_id,
             repository_id=repository.id,
             url=repository.url,
-            branch=repository.default_branch,
+            branch=scan.scanner_config["branch"],
         )
 
 
@@ -153,7 +160,7 @@ def active_records(db, data):
         .with_for_update()
     )
 
-    if job is None or job.status != "RUNNING":
+    if job is None or job.status != "RUNNING" or job.worker_id != WORKER_ID:
         raise JobNoLongerActive()
 
     scan = db.get(Scan, data.scan_id)
@@ -163,17 +170,21 @@ def active_records(db, data):
     return job, scan
 
 
-def update_progress(data, status, commit_sha=None):
+def update_progress(data, status, commit_sha=None, step=None, scanner_result=None):
     with sessions().begin() as db:
         job, scan = active_records(db, data)
         job.heartbeat_at = now()
         scan.status = status
+        scan.current_step = step
+        if scanner_result:
+            name, result = scanner_result
+            scan.scanner_results = {**scan.scanner_results, name: result}
 
         if commit_sha is not None:
             scan.commit_sha = commit_sha
 
 
-def fail_job(data, message):
+def fail_job(data, message, code="WORKER_FAILED"):
     with sessions().begin() as db:
         job = db.scalar(
             select(ScanJob)
@@ -181,92 +192,88 @@ def fail_job(data, message):
             .with_for_update()
         )
 
-        if job is not None and job.status == "RUNNING":
-            mark_failed(db, job, message)
+        if job is not None and job.status == "RUNNING" and job.worker_id == WORKER_ID:
+            mark_failed(db, job, message, code)
+
+
+def store_results(data, findings, summaries):
+    with sessions().begin() as db:
+        job, scan = active_records(db, data)
+        db.add_all(findings)
+        failed = [name for name, result in summaries.items() if result["status"] == "FAILED"]
+        timestamp = now()
+        scan.scanner_results = summaries
+        scan.status = ScanStatus.FAILED if failed else ScanStatus.COMPLETED
+        scan.error_message = ("Неполная проверка: " + ", ".join(failed) + ". Результаты успешных сканеров сохранены.") if failed else None
+        scan.error_code = "SCANNER_FAILED" if failed else None
+        scan.current_step = "store" if failed else "completed"
+        scan.completed_at = timestamp
+        job.status = "FAILED" if failed else "COMPLETED"
+        job.heartbeat_at = timestamp
+
+
+def heartbeat(data):
+    with sessions().begin() as db:
+        job, _ = active_records(db, data)
+        job.heartbeat_at = now()
+
+
+@contextmanager
+def keep_alive(data):
+    stop = threading.Event()
+
+    def pulse():
+        while not stop.wait(HEARTBEAT_SECONDS):
+            try:
+                heartbeat(data)
+            except JobNoLongerActive:
+                return
+            except SQLAlchemyError:
+                log_event(data, "heartbeat_failed", error_code="DATABASE_UNAVAILABLE")
+
+    thread = threading.Thread(target=pulse, daemon=True, name="scan-heartbeat")
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join(timeout=40)
 
 
 def execute_job(data):
-    print(f"SCAN_STARTED {data.scan_id}", flush=True)
-    failures = []
-    with checkout_repository(data.url, data.branch) as checkout:
-        repository_path, commit_sha = checkout
-        update_progress(data, ScanStatus.SCANNING, commit_sha=commit_sha)
-        for name, runner, normalizer, expected_error in (
-            ("gitleaks", run_gitleaks, normalize_gitleaks, GitleaksError),
-            ("semgrep", run_semgrep, normalize_semgrep, SemgrepError),
-            ("trivy", run_trivy, normalize_trivy, TrivyError),
-        ):
-            with sessions().begin() as db:
-                job, scan = active_records(db, data)
-                job.heartbeat_at = now()
-                scan.status = ScanStatus.SCANNING
-                scan.scanner_results = {**scan.scanner_results, name: {"status": "RUNNING"}}
-            try:
-                report = runner(repository_path)
-                update_progress(data, ScanStatus.NORMALIZING)
-                results = report if name == "gitleaks" else report.findings
-                findings = normalizer(results, project_id=data.project_id, repository_id=data.repository_id,
-                                      scan_id=data.scan_id, commit_sha=commit_sha)
-                summary = {
-                    "status": "COMPLETED", "finding_count": len(findings),
-                    "version": {"gitleaks": "8.30.1", "semgrep": SEMGREP_VERSION, "trivy": TRIVY_VERSION}[name],
-                    "scope": "branch_snapshot", "source_redacted": True,
-                }
-                if name == "semgrep":
-                    summary.update(scanned_files=report.scanned_files, rules_sha256=RULES_SHA256)
-                elif name == "trivy":
-                    summary.update(report.summary)
-                else:
-                    summary["secrets_redacted"] = True
-                # Each scanner's findings and status commit together. Another scanner's
-                # failure or a worker restart cannot erase already completed findings.
-                with sessions().begin() as db:
-                    job, scan = active_records(db, data)
-                    db.add_all(findings)
-                    scan.scanner_results = {**scan.scanner_results, name: summary}
-                    job.heartbeat_at = now()
-            except expected_error as exc:
-                message = str(exc)
-                failures.append(name)
-                with sessions().begin() as db:
-                    job, scan = active_records(db, data)
-                    scan.scanner_results = {**scan.scanner_results, name: {"status": "FAILED", "error": message}}
-                    job.heartbeat_at = now()
-    # The temporary repository and unredacted reports are gone before final status.
-    with sessions().begin() as db:
-        job, scan = active_records(db, data)
-        timestamp = now()
-        scan.status = ScanStatus.FAILED if failures else ScanStatus.COMPLETED
-        scan.error_message = ("Неполная проверка: " + ", ".join(failures) + ". Результаты успешных сканеров сохранены.") if failures else None
-        scan.completed_at = timestamp
-        job.status = "FAILED" if failures else "COMPLETED"
-        job.heartbeat_at = timestamp
-    print(f"SCAN_{job.status} {data.scan_id}", flush=True)
+    # Reject a stale/replayed claim before cloning or starting subprocesses.
+    heartbeat(data)
+    with keep_alive(data):
+        run_pipeline(data, update_progress, store_results)
+
 
 def process_job(data):
     try:
         execute_job(data)
     except JobNoLongerActive:
-        print(f"SCAN_NO_LONGER_ACTIVE {data.scan_id}", flush=True)
-    except (RepositoryCheckoutError, GitleaksError) as exc:
-        fail_job(data, str(exc))
-        print(f"SCAN_FAILED {data.scan_id}", flush=True)
+        log_event(data, "scan_no_longer_active")
+    except RepositoryCheckoutError as exc:
+        fail_job(data, str(exc), "CHECKOUT_FAILED")
+        log_event(data, "scan_failed", error_code="CHECKOUT_FAILED")
     except Exception:
-        # Не выводим исключение: оно может содержать данные репозитория.
-        fail_job(
-            data,
-            "Внутренняя ошибка обработки. Запустите новую проверку.",
-        )
-        print(f"SCAN_FAILED {data.scan_id}", flush=True)
+        fail_job(data, "Внутренняя ошибка обработки. Запустите новую проверку.", "INTERNAL_ERROR")
+        log_event(data, "scan_failed", error_code="INTERNAL_ERROR")
 
 
 def main():
     print("BULTSHIELD_WORKER_STARTING", flush=True)
     log_trivy_storage()
     database_available = False
+    next_cleanup = 0
 
     while True:
         try:
+            if time.monotonic() >= next_cleanup:
+                try:
+                    cleanup_orphans()
+                except OSError:
+                    print("WORKER_CLEANUP_FAILED", flush=True)
+                next_cleanup = time.monotonic() + 60
             recover_stale_jobs()
             data = claim_job()
 

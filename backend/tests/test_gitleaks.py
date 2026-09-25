@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import pytest
-from app import worker
+from app import scan_engine, worker
 from app.gitleaks_runner import GitleaksError, _sanitize_finding, run_gitleaks
 from app.models import Finding, Scan, ScanJob, ScanStatus
 from app.repository_checkout import RepositoryCheckoutError, checkout_repository
@@ -27,7 +27,7 @@ def project_and_scan(client, branch="main"):
 @pytest.fixture
 def worker_db(engine, monkeypatch):
     monkeypatch.setattr(worker, 'sessions', lambda: sessionmaker(bind=engine, expire_on_commit=False))
-    monkeypatch.setattr(worker, 'run_semgrep', lambda path: SemgrepReport([], 0))
+    monkeypatch.setattr(scan_engine, 'run_semgrep', lambda path: SemgrepReport([], 0))
 
 
 def sanitized(root):
@@ -62,8 +62,8 @@ def test_worker_persists_redacted_findings_and_deduplicates(client, db, worker_d
     def checkout(url, branch):
         yield tmp_path, 'a' * 40
 
-    monkeypatch.setattr(worker, 'checkout_repository', checkout)
-    monkeypatch.setattr(worker, 'run_gitleaks', lambda path: [sanitized(path), sanitized(path)])
+    monkeypatch.setattr(scan_engine, 'checkout_repository', checkout)
+    monkeypatch.setattr(scan_engine, 'run_gitleaks', lambda path: [sanitized(path), sanitized(path)])
     job = worker.claim_job()
     assert job is not None
     assert worker.claim_job() is None
@@ -89,7 +89,7 @@ def test_worker_failure_never_creates_clean_success(client, db, worker_db, monke
         raise RepositoryCheckoutError('Репозиторий недоступен.')
         yield
 
-    monkeypatch.setattr(worker, 'checkout_repository', fail_checkout)
+    monkeypatch.setattr(scan_engine, 'checkout_repository', fail_checkout)
     worker.process_job(worker.claim_job())
     result = client.get('/api/scans').json()[0]
     assert result['status'] == 'FAILED'

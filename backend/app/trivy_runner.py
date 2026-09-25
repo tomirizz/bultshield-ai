@@ -10,9 +10,10 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from tempfile import TemporaryDirectory, gettempdir
+from tempfile import gettempdir
 
 from .gitleaks_runner import GitleaksError, _check_size
+from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
 from .scanner_catalog import TRIVY_VERSION
 from .semgrep_runner import EXCLUDED_DIRECTORIES
 
@@ -164,7 +165,7 @@ def _log_memory(phase):
 def _run(command, cwd, environment, log, report=None, timeout=300):
     with log.open('wb') as output:
         process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
-                                   stdout=output, stderr=output, start_new_session=True)
+                                   stdout=output, stderr=output, start_new_session=True, pass_fds=inherited_lock())
         if process.poll() is None:
             _prefer_child_oom_victim(process.pid)
         deadline = time.monotonic() + timeout
@@ -230,7 +231,7 @@ def run_trivy(repository):
         cache = Path.home() / '.cache' / 'bultshield-trivy'
         cache.mkdir(parents=True, exist_ok=True)
         # Keep OCI downloads/unpacking off platform /tmp mounts that may use RAM.
-        with TemporaryDirectory(prefix='job-', dir=cache) as temporary:
+        with temporary_directory(prefix='job-', dir=cache) as temporary:
             workspace = Path(temporary)
             source = workspace / 'source'
             files = _snapshot(repository, source)
@@ -244,11 +245,12 @@ def run_trivy(repository):
                 'HOME': str(workspace), 'TMPDIR': str(workspace), 'LANG': 'C.UTF-8',
                 'GOMAXPROCS': '1', 'GOMEMLIMIT': '96MiB', 'GOGC': '20',
             }
+            deadline = time.monotonic() + timeout_seconds('TRIVY_TIMEOUT_SECONDS', 600)
             common = [executable, 'fs', '--config', str(config), '--cache-dir', str(cache),
-                      '--disable-telemetry', '--skip-version-check', '--no-progress', '--timeout', '5m']
+                      '--disable-telemetry', '--skip-version-check', '--no-progress', '--timeout', str(timeout_seconds('TRIVY_TIMEOUT_SECONDS', 600)) + 's']
             # Update only the trusted public vulnerability DB, without giving this step source files.
             print('TRIVY_DB_UPDATE_STARTED', flush=True)
-            _run(common + ['--download-db-only'], workspace, environment, workspace / 'db.log')
+            _run(common + ['--download-db-only'], workspace, environment, workspace / 'db.log', timeout=max(0, deadline - time.monotonic()))
             print('TRIVY_DB_UPDATE_COMPLETED', flush=True)
             metadata = json.loads((cache / 'db' / 'metadata.json').read_text())
             updated = datetime.fromisoformat(metadata['UpdatedAt'].replace('Z', '+00:00'))
@@ -264,7 +266,7 @@ def run_trivy(repository):
                 '--parallel', '1', '--format', 'json', '--output', str(report), str(source),
             ]
             print('TRIVY_ANALYSIS_STARTED', flush=True)
-            _run(command, workspace, environment, workspace / 'scan.log', report)
+            _run(command, workspace, environment, workspace / 'scan.log', report, timeout=max(0, deadline - time.monotonic()))
             print('TRIVY_ANALYSIS_COMPLETED', flush=True)
             if not report.is_file() or report.stat().st_size > MAX_REPORT:
                 raise TrivyError('JSON Trivy отсутствует или превышает 20 МБ.')

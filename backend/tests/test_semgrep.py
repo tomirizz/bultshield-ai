@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from uuid import UUID
 
 import pytest
-from app import worker
+from app import scan_engine, worker
 from app.gitleaks_runner import GitleaksError
 from app.models import ScanJob
 from app.scanner_catalog import RULES, SEMGREP_VERSION
@@ -105,7 +105,7 @@ def test_timeout_kills_process_group(monkeypatch, tmp_path):
             return -9
     monkeypatch.setattr(semgrep_runner.subprocess, 'Popen', lambda *a, **kw: Process())
     monkeypatch.setattr(semgrep_runner.os, 'killpg', lambda pid, sig: killed.append(pid))
-    with pytest.raises(SemgrepError, match='240'):
+    with pytest.raises(SemgrepError, match='лимит времени'):
         _run([], tmp_path, {})
     assert killed == [123]
 
@@ -114,12 +114,12 @@ def install_scan_mocks(monkeypatch, tmp_path):
     @contextmanager
     def checkout(url, branch):
         yield tmp_path, 'b' * 40
-    monkeypatch.setattr(worker, 'checkout_repository', checkout)
+    monkeypatch.setattr(scan_engine, 'checkout_repository', checkout)
     semgrep = parse_semgrep_report(raw_report(tmp_path), tmp_path, 1)
     gitleaks = sanitized(tmp_path)
     gitleaks['File'] = 'demo.py'  # Same file and line, different scanners.
-    monkeypatch.setattr(worker, 'run_gitleaks', lambda path: [gitleaks, copy.deepcopy(gitleaks)])
-    monkeypatch.setattr(worker, 'run_semgrep', lambda path: SemgrepReport(semgrep.findings * 2, 1))
+    monkeypatch.setattr(scan_engine, 'run_gitleaks', lambda path: [gitleaks, copy.deepcopy(gitleaks)])
+    monkeypatch.setattr(scan_engine, 'run_semgrep', lambda path: SemgrepReport(semgrep.findings * 2, 1))
 
 
 def test_combined_findings_duplicates_repeated_scans_and_filters(client, worker_db, monkeypatch, tmp_path):
@@ -153,7 +153,7 @@ def test_partial_failure_preserves_successful_scanner(client, worker_db, monkeyp
     install_scan_mocks(monkeypatch, tmp_path)
     def fail(path):
         raise (GitleaksError if failed_scanner == 'gitleaks' else SemgrepError)('Безопасная ошибка сканера.')
-    monkeypatch.setattr(worker, f'run_{failed_scanner}', fail)
+    monkeypatch.setattr(scan_engine, f'run_{failed_scanner}', fail)
     worker.process_job(worker.claim_job())
     result = client.get('/api/scans').json()[0]
     assert result['status'] == 'FAILED'
@@ -164,20 +164,20 @@ def test_partial_failure_preserves_successful_scanner(client, worker_db, monkeyp
     assert len(findings) == 1 and findings[0]['scanner'] == other
 
 
-def test_worker_crash_preserves_gitleaks(client, db, worker_db, monkeypatch, tmp_path):
+def test_worker_crash_before_store_is_atomic(client, db, worker_db, monkeypatch, tmp_path):
     scan = project_and_scan(client)
     install_scan_mocks(monkeypatch, tmp_path)
     def crash(path):
         raise RuntimeError('SENSITIVE_SOURCE')
-    monkeypatch.setattr(worker, 'run_semgrep', crash)
+    monkeypatch.setattr(scan_engine, 'run_semgrep', crash)
     job = worker.claim_job()
     worker.process_job(job)
     result = client.get('/api/scans').json()[0]
     assert result['status'] == 'FAILED'
-    assert result['scanner_results']['gitleaks']['status'] == 'COMPLETED'
+    assert result['scanner_results']['gitleaks']['status'] == 'FAILED'
     assert result['scanner_results']['semgrep']['status'] == 'FAILED'
     assert 'SENSITIVE_SOURCE' not in json.dumps(result)
-    assert len(client.get('/api/findings', params={'scan_id': scan['id']}).json()) == 1
+    assert client.get('/api/findings', params={'scan_id': scan['id']}).json() == []
     assert db.get(ScanJob, UUID(str(job.job_id))).status == 'FAILED'
 
 

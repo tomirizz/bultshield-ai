@@ -3,7 +3,8 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from tempfile import TemporaryDirectory
+
+from .scan_runtime import run_process, temporary_directory, timeout_seconds
 
 
 class GitleaksError(RuntimeError):
@@ -104,7 +105,7 @@ def run_gitleaks(repository: Path) -> list[dict]:
     try:
         _check_size(repository)
 
-        with TemporaryDirectory(prefix="bultshield-report-") as temporary:
+        with temporary_directory(prefix="bultshield-report-") as temporary:
             workspace = Path(temporary)
             report = workspace / "report.json"
             config = workspace / "trusted.toml"
@@ -143,15 +144,11 @@ def run_gitleaks(repository: Path) -> list[dict]:
                 "GOMEMLIMIT": "256MiB",
             }
 
-            result = subprocess.run(
+            result = run_process(
                 command,
                 cwd=repository,
                 env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=180,
-                check=False,
+                timeout=timeout_seconds("GITLEAKS_TIMEOUT_SECONDS", 180),
             )
 
             # 10 означает найденные секреты, а не сбой сканера.
@@ -188,7 +185,7 @@ def run_gitleaks(repository: Path) -> list[dict]:
 
     except subprocess.TimeoutExpired:
         raise GitleaksError(
-            "Сканирование превысило лимит: 180 секунд."
+            "Gitleaks превысил лимит времени."
         ) from None
     except (OSError, UnicodeError, json.JSONDecodeError):
         raise GitleaksError(

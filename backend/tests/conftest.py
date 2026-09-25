@@ -57,6 +57,6 @@ def db(engine):
 
 @pytest.fixture(autouse=True)
 def isolate_trivy(monkeypatch):
-    from app import worker
+    from app import scan_engine
     from app.trivy_runner import TrivyReport
-    monkeypatch.setattr(worker, 'run_trivy', lambda path: TrivyReport([], {}))
+    monkeypatch.setattr(scan_engine, 'run_trivy', lambda path: TrivyReport([], {}))

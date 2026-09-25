@@ -28,7 +28,8 @@ class ScanStatus(str, enum.Enum):
     QUEUED = "QUEUED"
     CLONING = "CLONING"
     SCANNING = "SCANNING"
-    NORMALIZING = "NORMALIZING"
+    ANALYSING = "ANALYSING"
+    NORMALIZING = "NORMALIZING"  # Historical scans remain readable.
     AI_ANALYSIS = "AI_ANALYSIS"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
@@ -105,6 +106,8 @@ class Scan(Record, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(index=True)
     repository_id: Mapped[uuid.UUID]
     status: Mapped[ScanStatus] = mapped_column(enum_type(ScanStatus, "scan_status"), default=ScanStatus.QUEUED, server_default="QUEUED", index=True)
+    current_step: Mapped[str | None] = mapped_column(sa.String(32))
+    error_code: Mapped[str | None] = mapped_column(sa.String(64))
     commit_sha: Mapped[str | None] = mapped_column(sa.String(64))
     target_url: Mapped[str | None] = mapped_column(sa.String(2048))
     scanner_config: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=sa.text("'{}'::jsonb"))
@@ -197,6 +200,7 @@ class ScanJob(Record, Base):
         server_default="QUEUED",
         index=True,
     )
+    worker_id: Mapped[str | None] = mapped_column(sa.String(64))
     attempts: Mapped[int] = mapped_column(default=0, server_default="0")
     locked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
     heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))

@@ -6,9 +6,9 @@ import subprocess
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from .gitleaks_runner import GitleaksError, _check_size
+from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
 from .scanner_catalog import RULES, RULES_PATH, SEMGREP_VERSION
 
 EXTENSIONS = {'.py', '.pyi', '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'}
@@ -104,15 +104,15 @@ def parse_semgrep_report(data, repository: Path, expected_files: int) -> Semgrep
 def _run(command, workspace, environment):
     process = subprocess.Popen(
         command, cwd=workspace, env=environment, stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, pass_fds=inherited_lock(),
     )
     try:
-        return process.wait(timeout=240)
+        return process.wait(timeout=timeout_seconds("SEMGREP_TIMEOUT_SECONDS", 300))
     except subprocess.TimeoutExpired:
         with suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
         process.wait()
-        raise SemgrepError('Semgrep превысил лимит: 240 секунд.') from None
+        raise SemgrepError('Semgrep превысил лимит времени.') from None
 
 
 def run_semgrep(repository: Path) -> SemgrepReport:
@@ -124,7 +124,7 @@ def run_semgrep(repository: Path) -> SemgrepReport:
         raise SemgrepError('Папка репозитория не найдена.')
     try:
         _check_size(repository)
-        with TemporaryDirectory(prefix='bultshield-semgrep-') as temporary:
+        with temporary_directory(prefix='bultshield-semgrep-') as temporary:
             workspace = Path(temporary)
             snapshot = workspace / 'source'
             expected = _snapshot(repository, snapshot)

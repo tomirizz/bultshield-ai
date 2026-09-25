@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health/live")
     def liveness():
-        return {"status": "ok", "app": "bultshield-ai", "stage": 5}
+        return {"status": "ok", "app": "bultshield-ai", "stage": 6}
 
     @app.get("/health/ready")
     def readiness():
@@ -49,7 +49,7 @@ def create_app() -> FastAPI:
             "database": "connected",
             "schema_revision": revision,
             "environment": get_settings().app_env,
-            "stage": 5,
+            "stage": 6,
             "scanners_enabled": True,
             "ai_enabled": False,
         }

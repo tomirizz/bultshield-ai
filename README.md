@@ -1,6 +1,6 @@
-# BultShield AI — Stage 5
+# BultShield — Stage 6
 
-Gitleaks + Semgrep CE + Trivy → unified PostgreSQL findings → dashboard. [Stage 5 scope, security policy and deployment](docs/STAGE_5.md).
+Unified Scan Engine on Bult.ai: queued jobs → worker → Gitleaks → Semgrep CE → Trivy → normalization → PostgreSQL findings. [Stage 6 architecture and deployment](docs/STAGE_6.md). [Stage 5 scope, security policy and deployment](docs/STAGE_5.md).
 
 Public GitHub repository → shallow checkout → Gitleaks 8.30.1 + Semgrep CE 1.178.0 + Trivy 0.74.0 → redacted findings in PostgreSQL → dashboard.
 
@@ -22,7 +22,7 @@ Only current files in the selected branch are scanned, not Git history. No repos
 
 Both builds use repository root `.` as context. App and worker use the same private DATABASE_URL. App starts migrations; worker uses the existing schema. Do not change the initialized PostgreSQL credentials by merely editing POSTGRES_* variables. Do not delete its volume.
 
-The shared MVP workspace has no login. Only public repositories should be scanned. At most one active scan per repository and ten jobs in the queue are accepted. The worker processes jobs serially, cleans temporary files, and marks interrupted jobs FAILED after 15 minutes without progress. Each scanner commits its findings and status together; successful results survive another scanner failing.
+The shared MVP workspace has no login. Only public repositories should be scanned. At most one active scan per repository and ten jobs in the queue are accepted. The worker processes jobs serially, cleans temporary files, and updates a heartbeat every 15 seconds and marks interrupted jobs FAILED after 180 seconds without heartbeat. Findings and terminal status commit together after normalization; known scanner failures retain valid results from the other scanners and mark the overall scan FAILED. See Stage 6 for crash recovery and cleanup.
 
 ## Checks
 

@@ -14,7 +14,7 @@ export interface Readiness {
 }
 export interface Scan {
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
-  error_message: string | null;
+  error_message: string | null; current_step: string | null; error_code: string | null;
   scanner_results: Record<string, { finding_count?: number; status: string; error?: string; scanned_files?: number; input_files?: number; db_updated_at?: string }>;
 }
 export interface Finding {

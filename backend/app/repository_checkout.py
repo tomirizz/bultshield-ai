@@ -6,10 +6,10 @@ import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from pydantic import ValidationError
 
+from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
 from .schemas import RepositoryCreate
 
 
@@ -45,7 +45,7 @@ def _run_git(
             text=True,
             encoding="utf-8",
             errors="replace",
-            start_new_session=True,
+            start_new_session=True, pass_fds=inherited_lock(),
         )
     except OSError:
         raise RepositoryCheckoutError(
@@ -92,7 +92,7 @@ def checkout_repository(
             "Git не установлен в сервисе сканирования."
         )
 
-    with TemporaryDirectory(prefix="bultshield-scan-") as temporary:
+    with temporary_directory(prefix="bultshield-scan-") as temporary:
         workspace = Path(temporary)
         destination = workspace / "repository"
 
@@ -123,7 +123,7 @@ def checkout_repository(
             ],
             workspace,
             environment,
-            timeout=90,
+            timeout=timeout_seconds("CLONE_TIMEOUT_SECONDS", 120),
         )
 
         commit_sha = _run_git(

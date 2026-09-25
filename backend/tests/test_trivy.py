@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
-from app import trivy_runner, worker
+from app import scan_engine, trivy_runner, worker
 from app.finding_normalizer import normalize_trivy
 from app.models import Finding, FindingStatus, ScanJob
 from app.trivy_runner import TrivyError, TrivyReport, _run, _snapshot, parse_trivy_report, run_trivy
@@ -89,7 +89,7 @@ def test_combined_three_scanners_and_server_filters(client, db, worker_db, monke
     report = parse()
     # Duplicate identical reports collapse, different versions and scanners survive.
     other = {**report.findings[0], 'installed_version': '0.9', 'package_id': 'demo@0.9', 'fixed_version': None}
-    monkeypatch.setattr(worker, 'run_trivy', lambda p: TrivyReport(report.findings * 2 + [other], {}))
+    monkeypatch.setattr(scan_engine, 'run_trivy', lambda p: TrivyReport(report.findings * 2 + [other], {}))
     worker.process_job(worker.claim_job())
     results = client.get('/api/findings', params={'scan_id': scan['id']}).json()
     assert len(results) == 5 and {f['scanner'] for f in results} == {'trivy', 'gitleaks', 'semgrep'}
@@ -131,7 +131,7 @@ def test_trivy_failure_preserves_other_scanners(client, worker_db, monkeypatch, 
     install_scan_mocks(monkeypatch, tmp_path)
     def fail(path):
         raise TrivyError('База CVE недоступна.')
-    monkeypatch.setattr(worker, 'run_trivy', fail)
+    monkeypatch.setattr(scan_engine, 'run_trivy', fail)
     worker.process_job(worker.claim_job())
     result = client.get('/api/scans').json()[0]
     assert result['status'] == 'FAILED' and result['scanner_results']['trivy']['status'] == 'FAILED'
@@ -277,12 +277,12 @@ def test_database_mirror_fallback_requires_successful_exit(tmp_path, monkeypatch
         _run(['trivy', 'fs', '--download-db-only'], tmp_path, {}, tmp_path/'log')
 
 
-def test_restart_recovery_preserves_completed_scanner_findings(client, db, worker_db, monkeypatch, tmp_path):
+def test_restart_before_store_publishes_no_findings(client, db, worker_db, monkeypatch, tmp_path):
     scan = project_and_scan(client)
     install_scan_mocks(monkeypatch, tmp_path)
     def interrupted(path):
         raise SystemExit('simulated worker termination')
-    monkeypatch.setattr(worker, 'run_trivy', interrupted)
+    monkeypatch.setattr(scan_engine, 'run_trivy', interrupted)
     data = worker.claim_job()
     with pytest.raises(SystemExit):
         worker.process_job(data)
@@ -293,6 +293,6 @@ def test_restart_recovery_preserves_completed_scanner_findings(client, db, worke
     result = client.get('/api/scans').json()[0]
     assert result['status'] == 'FAILED'
     assert result['scanner_results']['trivy']['status'] == 'FAILED'
-    assert all(result['scanner_results'][name]['status'] == 'COMPLETED' for name in ('gitleaks', 'semgrep'))
-    assert {f['scanner'] for f in client.get('/api/findings', params={'scan_id': scan['id']}).json()} == {'gitleaks', 'semgrep'}
+    assert all(result['scanner_results'][name]['status'] == 'FAILED' for name in ('gitleaks', 'semgrep'))
+    assert client.get('/api/findings', params={'scan_id': scan['id']}).json() == []
     assert client.post('/api/scans', json={'repository_id': scan['repository_id']}).status_code == 202

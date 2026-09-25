@@ -53,7 +53,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 5, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
+    return {**counts, "stage": 6, "capabilities": {"scanners": True, "ai": False, "rescans": False}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])

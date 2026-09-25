@@ -81,6 +81,8 @@ class ScanOut(Schema):
     project_id: UUID
     repository_id: UUID
     status: ScanStatus
+    current_step: str | None
+    error_code: str | None
     commit_sha: str | None
     created_at: datetime
     started_at: datetime | None
