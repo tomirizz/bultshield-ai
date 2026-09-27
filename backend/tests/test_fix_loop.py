@@ -132,6 +132,30 @@ def test_patch_guards(monkeypatch):
         fixes.check_secrets('password = "not-a-real-test-password"')
 
 
+def test_missing_import_is_rejected_without_running_source(monkeypatch):
+    monkeypatch.setattr(fixes, 'run_gitleaks', lambda p: [])
+    original = 'def parse(text):\n    return eval(text)\n'
+    missing_import = original.replace('eval(text)', 'json.loads(text)')
+    with pytest.raises(fixes.FixError, match='неопределённое имя'):
+        fixes.validate_proposal(original, missing_import, 'app.py')
+    fixes.validate_proposal(original, 'import json\n' + missing_import, 'app.py')
+    fixes.validate_proposal(original, missing_import.replace('    return', '    import json\n    return'), 'app.py')
+
+
+def test_rejected_proposal_can_be_regenerated_but_not_approved(client, db, setup_fix):
+    f, _, _, _ = setup_fix
+    first = client.post(f'/api/findings/{f.id}/fix').json()
+    fixes.process_next()
+    rejected = client.post(f"/api/fixes/{first['id']}/reject")
+    assert rejected.status_code == 200 and rejected.json()['status'] == 'FAILED'
+    assert client.post(f"/api/fixes/{first['id']}/approve").status_code == 409
+    second = client.post(f'/api/findings/{f.id}/fix').json()
+    assert second['id'] != first['id']
+    fixes.process_next()
+    assert client.post(f"/api/fixes/{second['id']}/approve").status_code == 202
+    assert client.post(f"/api/fixes/{second['id']}/reject").status_code == 409
+
+
 def test_hash_mismatch_and_stale_worker_never_verify(client, db, setup_fix):
     f, _, _, _ = setup_fix
     client.post(f'/api/findings/{f.id}/fix')

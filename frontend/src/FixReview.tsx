@@ -28,6 +28,12 @@ export function FixReview({ findingId }: { findingId: string }) {
     catch (e) { setError(e instanceof Error ? e.message : 'Не удалось выполнить действие'); }
     finally { setBusy(false); }
   }
+  async function reject() {
+    setBusy(true); setError('');
+    try { setFix(await request<Fix>(`/api/fixes/${fix!.id}/reject`, { method: 'POST' })); setReviewed(false); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Не удалось отклонить предложение'); }
+    finally { setBusy(false); }
+  }
   return <section className="panel ai-explanation"><div className="panel-heading"><div><h2>AI Fix Generator</h2><p>Предложение исправления и проверка сканером</p></div>{loaded && supported && (!fix || ['FAILED', 'STILL_DETECTED'].includes(fix.status)) && <button className="button primary" disabled={busy || !enabled} onClick={() => void action()}>Предложить исправление</button>}</div>
     <div className="ai-content">
       {error && <p className="alert error" role="alert">{error}</p>}
@@ -36,7 +42,7 @@ export function FixReview({ findingId }: { findingId: string }) {
       {fix && <><p role="status"><strong>{names[fix.status] || fix.status}</strong> · commit {fix.base_sha?.slice(0, 7)}</p>
         {fix.error_message && <p className="alert error">{fix.error_message}</p>}
         {fix.original !== null && <><p>{fix.file}</p><div className="fix-comparison"><div><h3>Original</h3><pre>{fix.original}</pre></div><div><h3>Proposed</h3><pre>{fix.proposed}</pre></div></div><h3>Diff</h3><pre>{fix.diff}</pre><h3>Explanation · AI</h3><p>{fix.description}</p></>}
-        {fix.status === 'PROPOSED' && <><label className="fix-consent"><input type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />Я просмотрел изменения и одобряю проверку во временной копии.</label><button className="button primary" disabled={busy || !reviewed} onClick={() => void action(true)}>Approve Fix</button></>}
+        {fix.status === 'PROPOSED' && <><label className="fix-consent"><input type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />Я просмотрел изменения и одобряю проверку во временной копии.</label><button className="button primary" disabled={busy || !reviewed} onClick={() => void action(true)}>Approve Fix</button> <button className="button" disabled={busy} onClick={() => void reject()}>Отклонить предложение</button></>}
         {fix.verification.outcome && <><h3>Before / After</h3>{fix.verification.outcome === 'INCONCLUSIVE' ? <p>Проверка не завершена. Исправление не подтверждено.</p> : <><p>Совпадений исходного правила: <strong>{fix.verification.before_matches} → {fix.verification.after_matches}</strong></p><p>Всего находок проверявшего сканера: {fix.verification.before_total} → {fix.verification.after_total}.</p><p>{fix.verification.note}</p></>}</>}
         {fix.verification_scan_id && <a className="text-button" href={`#/findings?scan_id=${fix.verification_scan_id}&scope=all`}>Результаты повторной проверки →</a>}
         {!!fix.timeline.length && <div className="fix-timeline"><span>Detected</span>{fix.timeline.map((entry, i) => <span key={i}> → {names[entry.status] || entry.status}</span>)}</div>}
