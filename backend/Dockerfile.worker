@@ -32,10 +32,13 @@ RUN python -m venv /opt/semgrep \
 COPY scripts/install_trivy.py /tmp/install_trivy.py
 RUN python /tmp/install_trivy.py && rm /tmp/install_trivy.py
 
+COPY scripts/install_nuclei.py /tmp/install_nuclei.py
+RUN python /tmp/install_nuclei.py && rm /tmp/install_nuclei.py
+
 COPY --chown=bultshield:bultshield backend/ ./
 
 USER bultshield
 
-RUN git --version && gitleaks version && semgrep --version && trivy --version
+RUN git --version && gitleaks version && semgrep --version && trivy --version && nuclei -version
 
 CMD ["python", "-m", "app.worker"]

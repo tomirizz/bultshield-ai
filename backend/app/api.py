@@ -54,7 +54,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 9, "capabilities": {"scanners": True, "ai": get_settings().ai_enabled, "rescans": False}}
+    return {**counts, "stage": 12, "capabilities": {"scanners": True, "ai": get_settings().ai_enabled, "rescans": True}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])
@@ -216,6 +216,6 @@ def create_scan(data: ScanRequest, db: DB):
     return scan
 
 
-@router.post("/rescans", status_code=501)
+@router.post('/rescans', status_code=409)
 def create_rescan(data: RescanRequest):
-    raise HTTPException(501, {"code": "SCANNERS_NOT_CONNECTED", "message": "Повторная проверка станет доступна после подключения сканеров."})
+    raise HTTPException(409, 'Для повторной проверки откройте находку, создайте исправление и нажмите Approve Fix.')

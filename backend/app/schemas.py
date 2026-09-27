@@ -77,6 +77,7 @@ class ProjectOut(Schema):
 
 
 class ScanOut(Schema):
+    kind: str = "static"
     id: UUID
     project_id: UUID
     repository_id: UUID

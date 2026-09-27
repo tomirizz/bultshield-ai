@@ -106,6 +106,7 @@ class Scan(Record, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(index=True)
     repository_id: Mapped[uuid.UUID]
     status: Mapped[ScanStatus] = mapped_column(enum_type(ScanStatus, "scan_status"), default=ScanStatus.QUEUED, server_default="QUEUED", index=True)
+    kind: Mapped[str] = mapped_column(sa.String(24), default="static", server_default="static", index=True)
     current_step: Mapped[str | None] = mapped_column(sa.String(32))
     error_code: Mapped[str | None] = mapped_column(sa.String(64))
     commit_sha: Mapped[str | None] = mapped_column(sa.String(64))
@@ -172,9 +173,23 @@ class Fix(Record, Base):
     description: Mapped[str] = mapped_column(sa.Text)
     diff: Mapped[str | None] = mapped_column(sa.Text)
     status: Mapped[str] = mapped_column(
-        sa.Enum("PROPOSED", "APPLIED", name="fix_status", native_enum=False, create_constraint=True), default="PROPOSED", server_default="PROPOSED"
+        sa.Enum("QUEUED", "GENERATING", "PROPOSED", "APPROVED", "APPLIED", "RECHECKING", "VERIFIED_FIXED", "STILL_DETECTED", "FAILED", name="fix_status", native_enum=False, create_constraint=True), default="PROPOSED", server_default="PROPOSED"
     )
     applied_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+
+    base_sha: Mapped[str | None] = mapped_column(sa.String(64))
+    file: Mapped[str | None] = mapped_column(sa.String(2048))
+    original_hash: Mapped[str | None] = mapped_column(sa.String(64))
+    original: Mapped[str | None] = mapped_column(sa.Text)
+    proposed: Mapped[str | None] = mapped_column(sa.Text)
+    model: Mapped[str | None] = mapped_column(sa.String(200))
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
+    worker_id: Mapped[str | None] = mapped_column(sa.String(64))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    verification_scan_id: Mapped[uuid.UUID | None] = mapped_column(sa.ForeignKey('scans.id'))
+    verification: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=sa.text("'{}'::jsonb"))
+    timeline: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
 
 
 class Rescan(Record, Base):
@@ -229,3 +244,11 @@ class SecurityIssueGroup(Record, Base):
     interpretation: Mapped[str] = mapped_column(sa.Text)
     verification: Mapped[str] = mapped_column(sa.Text)
     finding_ids: Mapped[list] = mapped_column(JSONB)
+
+
+class WebTarget(Record, Base):
+    __tablename__ = 'web_targets'
+    __table_args__ = (sa.UniqueConstraint('project_id', 'url'),)
+    project_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('projects.id', ondelete='CASCADE'), index=True)
+    url: Mapped[str] = mapped_column(sa.String(2048))
+    confirmed_control: Mapped[bool] = mapped_column(default=False)

@@ -43,3 +43,13 @@
 .correlation-group { border-top: 1px solid var(--border, #e2e8f0); padding-top: 20px; margin-top: 24px; }
 .correlation-evidence { border-left: 3px solid #cbd5e1; padding: 10px 16px; margin: 14px 0; overflow-wrap: anywhere; }
 .correlation-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.fix-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.fix-comparison pre { max-height: 420px; overflow: auto; }
+.fix-consent { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0; }
+.fix-consent input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; }
+.fix-timeline { margin: 18px 0; line-height: 1.9; font-size: 13px; }
+.target-form label { display: block; margin: 12px 0; }
+.target-form label.fix-consent { display: flex; }
+.target-form select { display: block; max-width: 100%; margin-top: 8px; }
+@media (max-width: 760px) { .fix-comparison { grid-template-columns: 1fr; } }

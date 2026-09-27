@@ -1,7 +1,7 @@
 import threading
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from uuid import UUID, uuid4
@@ -50,6 +50,8 @@ class JobData:
     repository_id: UUID
     url: str
     branch: str
+    kind: str = "static"
+    config: dict = field(default_factory=dict)
 
 
 class JobNoLongerActive(RuntimeError):
@@ -72,6 +74,8 @@ def mark_failed(db, job, message, code="WORKER_FAILED"):
             if results.get(scanner, {}).get("status") != "COMPLETED":
                 results[scanner] = {**results.get(scanner, {}), "status": "FAILED", "error": message, "error_code": code}
         scan.scanner_results = results
+        from .verification import failed
+        failed(db, scan, message)
 
 
 def recover_stale_jobs():
@@ -140,8 +144,9 @@ def claim_job():
         scan.started_at = timestamp
         scan.completed_at = None
         scan.error_message = None
-        scan.scanner_config = scan_configuration(scan.scanner_config.get("branch", repository.default_branch))
-        scan.scanner_results = {name: {"status": "PENDING"} for name in SCANNERS}
+        if scan.kind == 'static':
+            scan.scanner_config = scan_configuration(scan.scanner_config.get("branch", repository.default_branch))
+        scan.scanner_results = {name: {"status": "PENDING"} for name in scan.scanner_config.get('scanners', SCANNERS)}
 
         return JobData(
             job_id=job.id,
@@ -149,7 +154,8 @@ def claim_job():
             project_id=scan.project_id,
             repository_id=repository.id,
             url=repository.url,
-            branch=scan.scanner_config["branch"],
+            branch=scan.scanner_config.get("branch", repository.default_branch),
+            kind=scan.kind, config=scan.scanner_config,
         )
 
 
@@ -196,10 +202,13 @@ def fail_job(data, message, code="WORKER_FAILED"):
             mark_failed(db, job, message, code)
 
 
-def store_results(data, findings, summaries):
+def store_results(data, findings, summaries, verification=None):
     with sessions().begin() as db:
         job, scan = active_records(db, data)
         db.add_all(findings)
+        if verification is not None:
+            from .verification import finish
+            finish(db, data, *verification)
         failed = [name for name, result in summaries.items() if result["status"] == "FAILED"]
         timestamp = now()
         scan.scanner_results = summaries
@@ -244,7 +253,14 @@ def execute_job(data):
     # Reject a stale/replayed claim before cloning or starting subprocesses.
     heartbeat(data)
     with keep_alive(data):
-        run_pipeline(data, update_progress, store_results)
+        if data.kind == 'verification':
+            from .verification import run_verification
+            run_verification(data, update_progress, store_results)
+        elif data.kind == 'web':
+            from .nuclei_service import run_web_scan
+            run_web_scan(data, update_progress, store_results)
+        else:
+            run_pipeline(data, update_progress, store_results)
 
 
 def process_job(data):
@@ -282,6 +298,9 @@ def main():
                 database_available = True
 
             if data is None:
+                from .fix_service import process_next as process_fix
+                if process_fix():
+                    continue
                 time.sleep(2)
                 continue
 

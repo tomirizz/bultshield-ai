@@ -1,0 +1,37 @@
+{
+  "id": "bultshield-missing-nosniff",
+  "info": {
+    "name": "Missing X-Content-Type-Options",
+    "author": "bultshield",
+    "severity": "info",
+    "description": "Review header policy in application context; not proof of an exploitable vulnerability."
+  },
+  "http": [
+    {
+      "method": "GET",
+      "path": [
+        "{{BaseURL}}/"
+      ],
+      "redirects": false,
+      "max-redirects": 0,
+      "matchers-condition": "and",
+      "matchers": [
+        {
+          "type": "status",
+          "status": [
+            200
+          ]
+        },
+        {
+          "type": "word",
+          "part": "header",
+          "words": [
+            "x-content-type-options:"
+          ],
+          "case-insensitive": true,
+          "negative": true
+        }
+      ]
+    }
+  ]
+}

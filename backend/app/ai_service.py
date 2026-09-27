@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .database import get_engine, get_session
-from .models import AIAnalysis, CorrelationRun, Finding
+from .models import AIAnalysis, CorrelationRun, Finding, Fix
 from .schemas import AIAnalysisOut
 
 router = APIRouter(prefix='/api')
@@ -189,7 +189,7 @@ def process_next():
     with Session(get_engine(), expire_on_commit=False) as db:
         db.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': QUEUE_LOCK})
         recover(db)
-        if db.scalar(select(AIAnalysis.id).where(AIAnalysis.status == 'RUNNING').limit(1)) or db.scalar(select(CorrelationRun.id).where(CorrelationRun.status == 'RUNNING').limit(1)):
+        if db.scalar(select(Fix.id).where(Fix.status == 'GENERATING').limit(1)) or db.scalar(select(AIAnalysis.id).where(AIAnalysis.status == 'RUNNING').limit(1)) or db.scalar(select(CorrelationRun.id).where(CorrelationRun.status == 'RUNNING').limit(1)):
             db.commit()
             return False
         job = db.scalar(select(AIAnalysis).where(AIAnalysis.status == 'PENDING').order_by(AIAnalysis.created_at, AIAnalysis.id).limit(1).with_for_update(skip_locked=True))

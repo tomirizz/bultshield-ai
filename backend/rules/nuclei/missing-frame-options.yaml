@@ -1,0 +1,46 @@
+{
+  "id": "bultshield-missing-frame-options",
+  "info": {
+    "name": "Missing frame protection header",
+    "author": "bultshield",
+    "severity": "info",
+    "description": "Review header policy in application context; not proof of an exploitable vulnerability."
+  },
+  "http": [
+    {
+      "method": "GET",
+      "path": [
+        "{{BaseURL}}/"
+      ],
+      "redirects": false,
+      "max-redirects": 0,
+      "matchers-condition": "and",
+      "matchers": [
+        {
+          "type": "status",
+          "status": [
+            200
+          ]
+        },
+        {
+          "type": "word",
+          "part": "header",
+          "words": [
+            "x-frame-options:"
+          ],
+          "case-insensitive": true,
+          "negative": true
+        },
+        {
+          "type": "word",
+          "part": "header",
+          "words": [
+            "frame-ancestors"
+          ],
+          "case-insensitive": true,
+          "negative": true
+        }
+      ]
+    }
+  ]
+}

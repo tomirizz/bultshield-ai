@@ -42,6 +42,8 @@ jobs:
           sudo ln -s /tmp/semgrep/bin/semgrep /usr/local/bin/semgrep
       - name: Install SHA256-verified Trivy CLI
         run: sudo python scripts/install_trivy.py
+      - name: Install SHA256-verified Nuclei CLI
+        run: sudo python scripts/install_nuclei.py
       - run: python scripts/check_backend.py
   frontend:
     runs-on: ubuntu-latest

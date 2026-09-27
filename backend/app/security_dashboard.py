@@ -21,7 +21,7 @@ def check_project(db, project_id):
 
 def latest_scans(project_id=None, completed_only=False):
     query = select(Scan.id, Scan.repository_id, Scan.status, func.row_number().over(
-        partition_by=Scan.repository_id, order_by=(Scan.created_at.desc(), Scan.id.desc())).label('position'))
+        partition_by=(Scan.repository_id, Scan.kind, Scan.target_url), order_by=(Scan.created_at.desc(), Scan.id.desc())).label('position')).where(Scan.kind != 'verification')
     if project_id:
         query = query.where(Scan.project_id == project_id)
     if completed_only:
@@ -35,7 +35,7 @@ def security_summary(db: DB, project_id: uuid.UUID | None = None):
     check_project(db, project_id)
     selected = latest_scans(project_id, completed_only=True)
     severity = {item.value: 0 for item in Severity}
-    scanners = {name: 0 for name in ('gitleaks', 'semgrep', 'trivy')}
+    scanners = {name: 0 for name in ('gitleaks', 'semgrep', 'trivy', 'nuclei')}
     rows = db.execute(select(Finding.severity, Finding.scanner, func.count()).where(
         Finding.scan_id.in_(selected)).group_by(Finding.severity, Finding.scanner))
     for level, scanner, count in rows:
@@ -49,7 +49,7 @@ def security_summary(db: DB, project_id: uuid.UUID | None = None):
     snapshots = db.scalars(select(Scan).where(Scan.id.in_(selected)).order_by(Scan.created_at.desc(), Scan.id)).all()
     recent = db.scalars(select(Scan).where(Scan.id.in_(latest_scans(project_id))).order_by(Scan.created_at.desc(), Scan.id)).all()
     return {'scope': 'latest', 'total': sum(severity.values()), 'severity': severity, 'scanners': scanners,
-            'repository_count': db.scalar(repositories), 'scanned_repositories': len(snapshots),
+            'repository_count': db.scalar(repositories), 'scanned_repositories': len({s.repository_id for s in snapshots if s.kind == 'static'}),
             'scan_count': db.scalar(history), 'snapshots': [ScanOut.model_validate(s) for s in snapshots],
             'latest_runs': [ScanOut.model_validate(s) for s in recent]}
 

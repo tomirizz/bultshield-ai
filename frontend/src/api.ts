@@ -13,6 +13,7 @@ export interface Readiness {
   status: string; database: string; schema_revision: string; environment: string; stage: number;
 }
 export interface Scan {
+  kind: string;
   id: string; project_id: string; repository_id: string; status: string; created_at: string; commit_sha: string | null;
   started_at: string | null; completed_at: string | null;
   error_message: string | null; current_step: string | null; error_code: string | null;
@@ -20,7 +21,7 @@ export interface Scan {
 }
 export interface Finding {
   id: string; project_id: string; scan_id: string; description: string; evidence: string; rule_id: string; scanner: string; category: string; title: string;
-  cve: string | null; metadata: { package?: string; installed_version?: string; fixed_version?: string | null; suppressed?: boolean };
+  cve: string | null; metadata: { target_url?: string; verification_scope?: string; package?: string; installed_version?: string; fixed_version?: string | null; suppressed?: boolean };
   cwe: string | null; original_severity: string | null; severity: string; status: string; file: string | null; line_start: number | null; line_end: number | null; created_at: string;
 }
 export interface NewProject {

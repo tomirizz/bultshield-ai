@@ -75,6 +75,7 @@ def _run_git(
 def checkout_repository(
     url: str,
     branch: str = "main",
+    commit: str | None = None,
 ) -> Iterator[tuple[Path, str]]:
     try:
         repository = RepositoryCreate(
@@ -108,23 +109,32 @@ def checkout_repository(
             "GIT_LFS_SKIP_SMUDGE": "1",
         }
 
-        _run_git(
-            git,
-            [
-                "clone",
-                "--depth", "1",
-                "--single-branch",
-                "--no-tags",
-                "--no-recurse-submodules",
-                "--branch", repository.default_branch,
-                "--",
-                repository.url,
-                str(destination),
-            ],
-            workspace,
-            environment,
-            timeout=timeout_seconds("CLONE_TIMEOUT_SECONDS", 120),
-        )
+        if commit:
+            if not re.fullmatch(r'[0-9a-f]{40}', commit):
+                raise RepositoryCheckoutError('Некорректный исходный commit.')
+            destination.mkdir()
+            for args in (['init'], ['remote', 'add', 'origin', repository.url],
+                         ['fetch', '--depth', '1', '--no-tags', 'origin', commit],
+                         ['checkout', '--detach', 'FETCH_HEAD']):
+                _run_git(git, args, destination, environment, timeout_seconds('CLONE_TIMEOUT_SECONDS', 120))
+        else:
+            _run_git(
+                git,
+                [
+                    "clone",
+                    "--depth", "1",
+                    "--single-branch",
+                    "--no-tags",
+                    "--no-recurse-submodules",
+                    "--branch", repository.default_branch,
+                    "--",
+                    repository.url,
+                    str(destination),
+                ],
+                workspace,
+                environment,
+                timeout=timeout_seconds("CLONE_TIMEOUT_SECONDS", 120),
+            )
 
         commit_sha = _run_git(
             git,
@@ -140,4 +150,6 @@ def checkout_repository(
                 "Не удалось определить commit репозитория."
             )
 
+        if commit and commit_sha != commit:
+            raise RepositoryCheckoutError('Commit исходной проверки недоступен.')
         yield destination, commit_sha

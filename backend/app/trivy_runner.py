@@ -140,7 +140,7 @@ def parse_trivy_report(data, allowed_files):
                 # Do not persist Message, Description, Code, URLs, metadata or raw source.
                 findings.append(finding)
                 counts[category] += 1
-    return TrivyReport(findings, {'result_files': len(targets), 'raw_category_counts': counts})
+    return TrivyReport(findings, {'result_files': len(targets), 'covered_files': sorted(targets), 'raw_category_counts': counts})
 
 
 def _prefer_child_oom_victim(pid):
@@ -304,6 +304,7 @@ def run_trivy(repository):
             combined = []
             counts = {'dependency': 0, 'configuration': 0}
             result_files = 0
+            covered_files = set()
             # Separate processes avoid holding the CVE DB and Rego evaluator in memory together.
             for scanner in ('vuln', 'misconfig'):
                 print(f'TRIVY_{scanner.upper()}_STARTED', flush=True)
@@ -315,11 +316,12 @@ def run_trivy(repository):
                 part = parse_trivy_report(json.loads(report.read_text()), files)
                 combined.extend(part.findings)
                 result_files += part.summary['result_files']
+                covered_files.update(part.summary['covered_files'])
                 for category, count in part.summary['raw_category_counts'].items():
                     counts[category] += count
                 _release_download_cache([cache, workspace])
                 print(f'TRIVY_{scanner.upper()}_COMPLETED', flush=True)
-            parsed = TrivyReport(combined, {'result_files': result_files, 'raw_category_counts': counts})
+            parsed = TrivyReport(combined, {'result_files': result_files, 'covered_files': sorted(covered_files), 'raw_category_counts': counts})
             parsed.summary.update(input_files=len(files), db_updated_at=metadata['UpdatedAt'],
                                   scope='supported_manifests_and_configurations', checks='embedded',
                                   version=TRIVY_VERSION)

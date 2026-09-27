@@ -130,7 +130,7 @@ def test_scan_is_queued_without_fake_results(client, db):
     assert client.post(
         "/api/rescans",
         json={"original_scan_id": scan["id"]},
-    ).status_code == 501
+    ).status_code == 409
 
 
 def test_scan_rejects_missing_repository(client):
@@ -218,7 +218,7 @@ def test_database_enforces_finding_severity_and_status(client, db):
 def test_openapi_and_security_headers(client):
     result = client.get("/api/openapi.json")
     assert result.status_code == 200
-    assert result.json()["info"]["version"] == "0.9.0"
+    assert result.json()["info"]["version"] == "0.12.0"
     assert result.headers["x-content-type-options"] == "nosniff"
     assert result.headers["cache-control"] == "no-store"
     assert "/api/projects" in result.json()["paths"]

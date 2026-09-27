@@ -1,0 +1,37 @@
+{
+  "id": "bultshield-missing-hsts",
+  "info": {
+    "name": "Missing Strict-Transport-Security",
+    "author": "bultshield",
+    "severity": "info",
+    "description": "Review header policy in application context; not proof of an exploitable vulnerability."
+  },
+  "http": [
+    {
+      "method": "GET",
+      "path": [
+        "{{BaseURL}}/"
+      ],
+      "redirects": false,
+      "max-redirects": 0,
+      "matchers-condition": "and",
+      "matchers": [
+        {
+          "type": "status",
+          "status": [
+            200
+          ]
+        },
+        {
+          "type": "word",
+          "part": "header",
+          "words": [
+            "strict-transport-security:"
+          ],
+          "case-insensitive": true,
+          "negative": true
+        }
+      ]
+    }
+  ]
+}
