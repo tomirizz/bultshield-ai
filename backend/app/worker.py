@@ -316,4 +316,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # python -m executes this module as __main__. Services importing app.worker
+    # must share its queue-owner ID, exception classes and connection pool.
+    import sys
+    sys.modules[__spec__.name] = sys.modules[__name__]
     main()
