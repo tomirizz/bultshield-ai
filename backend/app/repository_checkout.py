@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
+from .scan_runtime import inherited_lock, limited_command, temporary_directory, timeout_seconds
 from .schemas import RepositoryCreate
 
 
@@ -36,7 +36,7 @@ def _run_git(
 
     try:
         process = subprocess.Popen(
-            command,
+            limited_command(command, timeout),
             cwd=directory,
             env=environment,
             stdin=subprocess.DEVNULL,

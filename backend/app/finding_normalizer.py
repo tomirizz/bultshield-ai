@@ -157,7 +157,7 @@ def normalize_trivy(results, *, project_id, repository_id, scan_id, commit_sha):
         if fingerprint in seen:
             continue
         seen.add(fingerprint)
-        metadata = {key: result[key] for key in ('ecosystem', 'package', 'installed_version', 'fixed_version', 'package_id', 'suppressed') if key in result}
+        metadata = {key: result[key] for key in ('ecosystem', 'package', 'installed_version', 'fixed_version', 'package_id', 'suppressed', 'cvss_score', 'cvss_source') if key in result}
         metadata.update(repository_id=str(repository_id), commit_sha=commit_sha, scanner_version=TRIVY_VERSION,
                         scan_scope='branch_snapshot', source_redacted=True, severity_source='trivy', review_required=True)
         findings.append(Finding(

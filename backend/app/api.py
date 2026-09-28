@@ -9,7 +9,23 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .database import get_session
-from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, Project, Repository, Rescan, Scan, ScanJob, Scanner, ScanStatus, Severity, User
+from .models import (
+    AIAnalysis,
+    Category,
+    Finding,
+    FindingStatus,
+    Fix,
+    Project,
+    Repository,
+    Rescan,
+    Scan,
+    ScanJob,
+    Scanner,
+    ScanStatus,
+    Severity,
+    User,
+    WebTarget,
+)
 from .scanner_catalog import scan_configuration
 from .schemas import (
     AIAnalysisOut,
@@ -54,7 +70,7 @@ def overview(db: DB):
         name: db.scalar(select(func.count()).select_from(model))
         for name, model in [("projects", Project), ("repositories", Repository), ("scans", Scan), ("findings", Finding)]
     }
-    return {**counts, "stage": 12, "capabilities": {"scanners": True, "ai": get_settings().ai_enabled, "rescans": True}}
+    return {**counts, "stage": 20, "capabilities": {"scanners": True, "ai": get_settings().ai_enabled, "rescans": True}}
 
 
 @router.get("/projects", response_model=list[ProjectOut])
@@ -67,7 +83,7 @@ def list_projects(db: DB, limit: Limit = 100, offset: Annotated[int, Query(ge=0)
 def create_project(data: ProjectCreate, db: DB):
     try:
         db.execute(insert(User).values(id=WORKSPACE_USER_ID, display_name="MVP workspace").on_conflict_do_nothing(index_elements=["id"]))
-        project = Project(owner_id=WORKSPACE_USER_ID, name=data.name, description=data.description, target_url=data.target_url)
+        project = Project(owner_id=db.info.get('owner_id', WORKSPACE_USER_ID), name=data.name, description=data.description, target_url=data.target_url)
         db.add(project)
         db.flush()
         if data.repository:
@@ -211,6 +227,22 @@ def create_scan(data: ScanRequest, db: DB):
     db.flush()
 
     db.add(ScanJob(scan_id=scan.id, status="QUEUED"))
+    # Registered staging checks are separate snapshots: never imply they ran on this commit.
+    target = db.scalar(select(WebTarget).where(WebTarget.project_id == repository.project_id,
+        WebTarget.confirmed_control.is_(True)).order_by(WebTarget.created_at).limit(1))
+    if target is not None and pending <= 8:
+        from .nuclei_service import RULES, VERSION
+        existing_web = db.scalar(select(Scan.id).join(ScanJob, ScanJob.scan_id == Scan.id).where(
+            Scan.project_id == repository.project_id, Scan.kind == 'web', Scan.target_url == target.url,
+            ScanJob.status.in_(('QUEUED', 'RUNNING'))).limit(1))
+        if existing_web is None:
+            web = Scan(project_id=repository.project_id, repository_id=repository.id, kind='web', target_url=target.url,
+                scanner_config={'scanners': ['nuclei'], 'scope': 'allowlisted_staging', 'branch': repository.default_branch,
+                    'target_id': str(target.id), 'target_url': target.url, 'nuclei_version': VERSION,
+                    'templates': list(RULES), 'rate_per_second': 1, 'companion_static_scan': str(scan.id)})
+            db.add(web)
+            db.flush()
+            db.add(ScanJob(scan_id=web.id))
     db.commit()
     db.refresh(scan)
     return scan

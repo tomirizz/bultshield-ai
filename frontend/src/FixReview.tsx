@@ -11,6 +11,7 @@ export function FixReview({ findingId }: { findingId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reviewed, setReviewed] = useState(false);
+  const [branch, setBranch] = useState('');
   useEffect(() => {
     let live = true; let timer: number;
     async function refresh() {
@@ -26,6 +27,12 @@ export function FixReview({ findingId }: { findingId: string }) {
     setBusy(true); setError('');
     try { setFix(await request<Fix>(approve ? `/api/fixes/${fix!.id}/approve` : `/api/findings/${findingId}/fix`, { method: 'POST' })); setReviewed(false); }
     catch (e) { setError(e instanceof Error ? e.message : 'Не удалось выполнить действие'); }
+    finally { setBusy(false); }
+  }
+  async function createBranch() {
+    setBusy(true); setError('');
+    try { const result = await request<{ url: string }>(`/api/github/fixes/${fix!.id}/branch`, { method: 'POST' }); setBranch(result.url); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Не удалось создать ветку'); }
     finally { setBusy(false); }
   }
   async function reject() {
@@ -44,6 +51,7 @@ export function FixReview({ findingId }: { findingId: string }) {
         {fix.original !== null && <><p>{fix.file}</p><div className="fix-comparison"><div><h3>Original</h3><pre>{fix.original}</pre></div><div><h3>Proposed</h3><pre>{fix.proposed}</pre></div></div><h3>Diff</h3><pre>{fix.diff}</pre><h3>Explanation · AI</h3><p>{fix.description}</p></>}
         {fix.status === 'PROPOSED' && <><label className="fix-consent"><input type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} />Я просмотрел изменения и одобряю проверку во временной копии.</label><button className="button primary" disabled={busy || !reviewed} onClick={() => void action(true)}>Approve Fix</button> <button className="button" disabled={busy} onClick={() => void reject()}>Отклонить предложение</button></>}
         {fix.verification.outcome && <><h3>Before / After</h3>{fix.verification.outcome === 'INCONCLUSIVE' ? <p>Проверка не завершена. Исправление не подтверждено.</p> : <><p>Совпадений исходного правила: <strong>{fix.verification.before_matches} → {fix.verification.after_matches}</strong></p><p>Всего находок проверявшего сканера: {fix.verification.before_total} → {fix.verification.after_total}.</p><p>{fix.verification.note}</p></>}</>}
+        {fix.status === 'VERIFIED_FIXED' && (branch ? <a className="text-button" href={branch} target="_blank" rel="noreferrer">Открыть fix branch ↗</a> : <button className="button secondary" disabled={busy} onClick={createBranch}>Создать отдельную fix branch в GitHub</button>)}
         {fix.verification_scan_id && <a className="text-button" href={`#/findings?scan_id=${fix.verification_scan_id}&scope=all`}>Результаты повторной проверки →</a>}
         {!!fix.timeline.length && <div className="fix-timeline"><span>Detected</span>{fix.timeline.map((entry, i) => <span key={i}> → {names[entry.status] || entry.status}</span>)}</div>}
       </>}

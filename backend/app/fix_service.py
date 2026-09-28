@@ -19,7 +19,7 @@ from . import ai_service as ai
 from .config import get_settings
 from .database import get_session
 from .gitleaks_runner import run_gitleaks
-from .models import AIAnalysis, CorrelationRun, Finding, FindingStatus, Fix, Repository, Rescan, Scan, ScanJob, ScanStatus
+from .models import AgentRun, AIAnalysis, CorrelationRun, Finding, FindingStatus, Fix, Repository, Rescan, Scan, ScanJob, ScanStatus
 from .repository_checkout import checkout_repository
 from .scan_runtime import job_workspace, temporary_directory
 from .scanner_catalog import scan_configuration
@@ -221,7 +221,7 @@ def process_next():
             transition(stale, 'FAILED')
             stale.error_message = 'Генерация прервана: worker перестал отвечать. Повторите попытку.'
         if any(db.scalar(select(model.id).where(model.status == state).limit(1)) for model, state in
-               ((AIAnalysis, 'RUNNING'), (CorrelationRun, 'RUNNING'), (Fix, 'GENERATING'))):
+               ((AgentRun, 'RUNNING'), (AIAnalysis, 'RUNNING'), (CorrelationRun, 'RUNNING'), (Fix, 'GENERATING'))):
             return False
         fix = db.scalar(select(Fix).where(Fix.status == 'QUEUED').order_by(Fix.created_at).limit(1).with_for_update(skip_locked=True))
         if not fix:

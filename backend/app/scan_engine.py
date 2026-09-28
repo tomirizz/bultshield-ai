@@ -41,7 +41,7 @@ def run_pipeline(data, progress, store):
     reports, summaries, findings = [], {}, []
     with job_workspace(data.job_id):
         progress(data, ScanStatus.CLONING, step='clone')
-        with checkout_repository(data.url, data.branch) as (repository, commit_sha):
+        with checkout_repository(data.url, data.branch, **({'commit': data.config['requested_commit']} if data.config.get('requested_commit') else {})) as (repository, commit_sha):
             for adapter in adapters():
                 progress(data, ScanStatus.SCANNING, commit_sha=commit_sha, step=adapter.name,
                          scanner_result=(adapter.name, {'status': 'RUNNING'}))

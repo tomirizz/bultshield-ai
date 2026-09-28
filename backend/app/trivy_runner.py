@@ -1,5 +1,6 @@
 """Bounded dependency and configuration scans with no repository-controlled policy."""
 import json
+import math
 import os
 import re
 import shutil
@@ -13,7 +14,7 @@ from pathlib import Path
 from tempfile import gettempdir
 
 from .gitleaks_runner import GitleaksError, _check_size
-from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
+from .scan_runtime import inherited_lock, limited_command, temporary_directory, timeout_seconds
 from .scanner_catalog import TRIVY_VERSION
 from .semgrep_runner import EXCLUDED_DIRECTORIES
 
@@ -128,6 +129,16 @@ def parse_trivy_report(data, allowed_files):
                                    fixed_version=_text(item.get('FixedVersion', ''), 1000, required=False) or None,
                                    package_id=_text(item.get('PkgID'), 1000, required=False),
                                    cve=rule if re.fullmatch(r'CVE-\d{4}-\d{4,}', rule) else None)
+                    scores = item.get('CVSS') or {}
+                    if isinstance(scores, dict):
+                        for vendor in ('nvd', 'ghsa', 'redhat', 'ubuntu'):
+                            metrics = scores.get(vendor)
+                            if not isinstance(metrics, dict):
+                                continue
+                            score = metrics.get('V3Score', metrics.get('V2Score'))
+                            if type(score) in (int, float) and math.isfinite(score) and 0 <= score <= 10:
+                                finding.update(cvss_score=score, cvss_source=vendor)
+                                break
                 else:
                     cause = item.get('CauseMetadata') or {}
                     if not isinstance(cause, dict):
@@ -191,7 +202,7 @@ def _release_download_cache(roots):
 
 def _run(command, cwd, environment, log, report=None, timeout=300):
     with log.open('wb') as output:
-        process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
+        process = subprocess.Popen(limited_command(command, timeout), cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
                                    stdout=output, stderr=output, start_new_session=True, pass_fds=inherited_lock())
         if process.poll() is None:
             _prefer_child_oom_victim(process.pid)
