@@ -23,11 +23,11 @@ export function WebTargets({ projectId }: { projectId: string }) {
     catch (e) { setError(e instanceof Error ? e.message : 'Не удалось запустить'); }
     finally { setBusy(false); }
   }
-  return <section className="panel ai-explanation"><div className="panel-heading"><div><h2>Test / Staging · Nuclei</h2><p>Ограниченная проверка HTTP-заголовков</p></div></div><div className="ai-content">
+  return <section className="panel ai-explanation"><div className="panel-heading"><div><h2>Проверка тестового сайта · Nuclei</h2><p>Ограниченная проверка HTTP-заголовков</p></div></div><div className="ai-content">
     <p>Три локальных шаблона, один запрос в секунду. Только разрешённые HTTPS-адреса, без перенаправлений. Эксплуатация уязвимостей и перебор не выполняются.</p>
     {error && <p className="alert error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {data && !data.allowlist.length && <p>Оператору нужно добавить test/staging origin в NUCLEI_ALLOWED_TARGETS у приложения и worker на Bult.ai. До этого сетевые проверки недоступны.</p>}
-    {!!data?.allowlist.length && <form onSubmit={e => void add(e)} className="target-form"><label>Разрешённый адрес<select value={url} onChange={e => setUrl(e.target.value)} required><option value="">Выберите staging</option>{data.allowlist.map(v => <option key={v} value={v}>{v}</option>)}</select></label><label className="fix-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />Я владею сервисом или имею разрешение на его проверку.</label><button className="button secondary" disabled={busy || !consent || !url}>Добавить адрес</button></form>}
+    {!!data?.allowlist.length && <form onSubmit={e => void add(e)} className="target-form"><label>Разрешённый адрес<select value={url} onChange={e => setUrl(e.target.value)} required><option value="">Выберите тестовый сайт</option>{data.allowlist.map(v => <option key={v} value={v}>{v}</option>)}</select></label><label className="fix-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />Я владею сервисом или имею разрешение на его проверку.</label><button className="button secondary" disabled={busy || !consent || !url}>Добавить адрес</button></form>}
     {data?.items.map(t => <div className="repository-row" key={t.id}><span>{t.url}</span><button className="button secondary" disabled={busy || !t.allowed} onClick={() => void scan(t.id)}>{t.allowed ? 'Проверить Nuclei' : 'Исключён из allowlist'}</button></div>)}
   </div></section>;
 }

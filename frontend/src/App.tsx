@@ -10,7 +10,7 @@ import { FindingDetail, FindingsPage, ProjectDashboard, ScanHistory, SecuritySum
 
 type View = 'review' | 'workspace' | 'findings' | 'activity' | 'system';
 const nav = [
-  { id: 'review' as const, label: 'AI Security Review', icon: ShieldCheck },
+  { id: 'review' as const, label: 'Обзор безопасности', icon: ShieldCheck },
   { id: 'workspace' as const, label: 'Проекты', icon: LayoutDashboard },
   { id: 'findings' as const, label: 'Находки', icon: ShieldEllipsis },
   { id: 'activity' as const, label: 'Сканирования', icon: Activity },
@@ -20,7 +20,7 @@ const tools = [
   { name: 'Gitleaks', role: 'Поиск секретов', icon: KeyRound },
   { name: 'Semgrep CE', role: 'Проверка кода', icon: CodeXml },
   { name: 'Trivy', role: 'Зависимости и конфигурация', icon: Package },
-  { name: 'Nuclei', role: 'Разрешённые staging targets', icon: ScanLine },
+  { name: 'Nuclei', role: 'Проверка тестового сайта', icon: ScanLine },
 ];
 const date = (value: string) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
@@ -158,7 +158,7 @@ export default function App() {
     <div className="app-content">
       <header className="topbar"><div className="breadcrumbs">BultShield <ChevronRight size={13} /><span>{view === 'project' ? 'Обзор проекта' : view === 'finding' ? 'Карточка находки' : nav.find(item => item.id === view)?.label}</span></div><div className="topbar-actions"><span className={`connection ${isReady ? 'connected' : loading ? '' : 'disconnected'}`}><span />{loading ? 'Подключение…' : isReady ? 'Подключено' : 'Нет соединения'}</span><button className="icon-button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button><span className="user-avatar">BS</span></div></header>
       <main className="main-content">
-        <div className="page-heading"><div><h1>{view === 'project' ? 'Обзор проекта' : view === 'finding' ? 'Карточка находки' : view === 'review' ? 'AI Security Review' : view === 'workspace' ? 'Проекты' : view === 'findings' ? 'Результаты проверок' : view === 'activity' ? 'История сканирований' : 'Состояние системы'}</h1><p>{view === 'project' ? 'Результаты проверок и история проекта.' : view === 'finding' ? 'Подробности результата сканирования.' : view === 'review' ? 'Приоритеты, связи между находками и проверенные исправления.' : view === 'workspace' ? 'Добавьте репозиторий GitHub и запустите проверку.' : view === 'findings' ? 'Секреты, ошибки кода, уязвимости зависимостей и конфигурации.' : view === 'activity' ? 'История запусков и результаты сканеров.' : 'Подключение к базе данных и сведения о приложении.'}</p></div><div className="heading-actions"><button className="button secondary compact" onClick={() => { setPageRevision(n => n + 1); void refresh(); }} disabled={loading} aria-label="Обновить данные"><RefreshCw size={16} className={loading ? 'spin' : ''} /><span>Обновить</span></button>{view === 'workspace' && <button className="button primary" onClick={() => setCreateOpen(true)} disabled={!isReady}><Plus size={16} />Новый проект</button>}</div></div>
+        <div className="page-heading"><div><h1>{view === 'project' ? 'Обзор проекта' : view === 'finding' ? 'Карточка находки' : view === 'review' ? 'Обзор безопасности' : view === 'workspace' ? 'Проекты' : view === 'findings' ? 'Результаты проверок' : view === 'activity' ? 'История сканирований' : 'Состояние системы'}</h1><p>{view === 'project' ? 'Результаты проверок и история проекта.' : view === 'finding' ? 'Подробности результата сканирования.' : view === 'review' ? 'Приоритеты, связи между находками и проверенные исправления.' : view === 'workspace' ? 'Добавьте репозиторий GitHub и запустите проверку.' : view === 'findings' ? 'Секреты, ошибки кода, уязвимости зависимостей и конфигурации.' : view === 'activity' ? 'История запусков и результаты сканеров.' : 'Подключение к базе данных и сведения о приложении.'}</p></div><div className="heading-actions"><button className="button secondary compact" onClick={() => { setPageRevision(n => n + 1); void refresh(); }} disabled={loading} aria-label="Обновить данные"><RefreshCw size={16} className={loading ? 'spin' : ''} /><span>Обновить</span></button>{view === 'workspace' && <button className="button primary" onClick={() => setCreateOpen(true)} disabled={!isReady}><Plus size={16} />Новый проект</button>}</div></div>
         {readiness?.environment === 'development' && <div className="preview-note"><Server size={14} />Локальное окружение</div>}
         {refreshFailed && <div className="alert error" role="status">Не удалось обновить данные. Показаны последние полученные результаты. Повторите обновление.</div>}
         {error && <div className="alert error" role="alert">{error}</div>}

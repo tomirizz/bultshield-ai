@@ -39,10 +39,10 @@ export function ProjectCorrelation({ projectId }: { projectId: string }) {
       {run?.error_message && <p className="alert error">{run.error_message}</p>}
       {run?.stale && <p className="summary-note">Появились новые результаты сканирования. Эти группы относятся к предыдущим проверкам.</p>}
       {run && <p className="summary-note">Находок в анализе: {run.analysed_findings} из {run.total_findings}. {run.total_findings > run.analysed_findings && 'Обработана только часть находок: ограничение одного анализа — 12.'}</p>}
-      {run?.status === 'COMPLETED' && <><p className="ai-disclosure">AI interpretation · модель {run.model}, Bult.ai. Связи являются гипотезами и требуют проверки разработчиком.</p>
+      {run?.status === 'COMPLETED' && <><p className="ai-disclosure">Анализ AI · модель {run.model}, Bult.ai. Связи являются гипотезами и требуют проверки разработчиком.</p>
         {!run.groups.length && <p>Модель не предложила связанных групп. Это не доказывает отсутствие связей или уязвимостей.</p>}
-        {run.groups.map(group => <article key={group.id} className="correlation-group"><h3>{group.title}</h3><h4>AI interpretation · гипотеза</h4><p>{group.ai_interpretation}</p><p><strong>Что проверить:</strong> {group.verification}</p>
-          <h4>Scanner evidence · результаты сканеров</h4>{group.scanner_evidence.map(f => <div className="correlation-evidence" key={f.id}><a href={`#/findings/${f.id}`}>{f.title} →</a><p><strong>{f.scanner}</strong> · {f.severity} · {f.file || 'Файл не указан'}{f.line_start ? `:${f.line_start}` : ''}</p><p>Правило: {f.rule_id}{f.cve ? ` · ${f.cve}` : ''}{f.cwe ? ` · ${f.cwe}` : ''}</p><pre>{f.evidence || 'Evidence не предоставлен сканером.'}</pre></div>)}
+        {run.groups.map(group => <article key={group.id} className="correlation-group"><h3>{group.title}</h3><h4>Гипотеза AI</h4><p>{group.ai_interpretation}</p><p><strong>Что проверить:</strong> {group.verification}</p>
+          <h4>Результаты сканеров</h4>{group.scanner_evidence.map(f => <div className="correlation-evidence" key={f.id}><a href={`#/findings/${f.id}`}>{f.title} →</a><p><strong>{f.scanner}</strong> · {f.severity} · {f.file || 'Файл не указан'}{f.line_start ? `:${f.line_start}` : ''}</p><p>Правило: {f.rule_id}{f.cve ? ` · ${f.cve}` : ''}{f.cwe ? ` · ${f.cwe}` : ''}</p><pre>{f.evidence || 'Сканер не предоставил дополнительные данные.'}</pre></div>)}
         </article>)}
       </>}
     </div>

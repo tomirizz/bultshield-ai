@@ -32,8 +32,8 @@ export function AIExplanation({ findingId }: { findingId: string }) {
     finally { setBusy(false); }
   }
   const result = analysis?.status === 'COMPLETED' ? analysis.result : null;
-  return <section className="panel ai-explanation" aria-label="AI Explanation">
-    <div className="panel-heading"><div><h2>AI Explanation</h2><p>Объяснение и рекомендации по результату сканера</p></div>
+  return <section className="panel ai-explanation" aria-label="Объяснение AI">
+    <div className="panel-heading"><div><h2>Объяснение AI</h2><p>Объяснение и рекомендации по результату сканера</p></div>
       {!result && <button className="button primary" disabled={!loaded || !enabled || busy || pending} onClick={() => void start()}>{busy ? 'Добавляем…' : pending ? 'Анализ выполняется…' : analysis?.status === 'FAILED' ? 'Повторить анализ' : 'Объяснить находку'}</button>}
     </div>
     <div className="ai-content">
@@ -47,9 +47,9 @@ export function AIExplanation({ findingId }: { findingId: string }) {
         <h3>Почему это потенциально опасно</h3><p>{result.risk}</p>
         <h3>Где находится</h3><p>Файл и строка указаны в карточке находки выше. Модель не получает содержимое исходного файла.</p>
         <h3>Что проверить</h3><ul>{result.checks.map((step, i) => <li key={i}>{step}</li>)}</ul>
-        <h3>Recommended Fix</h3><p>{result.recommended_fix}</p>
+        <h3>Рекомендуемое исправление</h3><p>{result.recommended_fix}</p>
         <h3>Пример исправления</h3><p className="summary-note">Иллюстративный пример. Адаптируйте его к коду и зависимостям проекта.</p><pre>{result.code_example}</pre>
-        <h3>Шаги исправления · AI-generated</h3><ol>{result.remediation_steps.map((step, i) => <li key={i}>{step}</li>)}</ol>
+        <h3>План исправления</h3><ol>{result.remediation_steps.map((step, i) => <li key={i}>{step}</li>)}</ol>
       </>}
     </div>
   </section>;
