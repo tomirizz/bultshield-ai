@@ -80,7 +80,8 @@ def test_oauth_callback_rejects_unbound_state(client):
     assert client.get('/api/auth/callback?state=attacker&code=code').status_code == 400
 
 
-def test_oauth_pkce_callback_encrypts_token_and_consumes_state(monkeypatch, db):
+@pytest.mark.parametrize("separate_key", [True, False])
+def test_oauth_pkce_callback_encrypts_token_and_consumes_state(monkeypatch, db, separate_key):
     from urllib.parse import parse_qs, urlsplit
 
     from app import auth
@@ -89,7 +90,7 @@ def test_oauth_pkce_callback_encrypts_token_and_consumes_state(monkeypatch, db):
     settings = get_settings()
     key = Fernet.generate_key()
     for name, value in {'auth_enabled': True, 'github_client_id': 'test-client', 'github_client_secret': 'test-secret',
-                        'github_token_key': key.decode(), 'legacy_owner_github_id': '12345'}.items():
+                        'github_token_key': key.decode() if separate_key else '', 'legacy_owner_github_id': '12345'}.items():
         monkeypatch.setattr(settings, name, value)
     def github(path, token=None, data=None):
         if path == '/login/oauth/access_token':
@@ -112,7 +113,7 @@ def test_oauth_pkce_callback_encrypts_token_and_consumes_state(monkeypatch, db):
         identity = db.scalar(select(GithubIdentity))
         assert identity.user_id == auth.LEGACY_OWNER
         assert identity.encrypted_token != 'synthetic-oauth-value'
-        assert Fernet(key).decrypt(identity.encrypted_token.encode()) == b'synthetic-oauth-value'
+        assert auth.token_cipher().decrypt(identity.encrypted_token.encode()) == b'synthetic-oauth-value'
         assert db.scalar(select(OAuthState)) is None
         client.post('/api/auth/logout', headers={'Origin': settings.public_url}, follow_redirects=False)
         assert client.get('/api/projects').status_code == 401

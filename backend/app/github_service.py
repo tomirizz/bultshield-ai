@@ -4,13 +4,12 @@ import uuid
 from typing import Annotated
 from urllib.parse import quote, urlsplit
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .auth import github_request
-from .config import get_settings
+from .auth import github_request, token_cipher
 from .database import get_session
 from .models import AuditEvent, Finding, Fix, GithubIdentity, Repository, Scan
 
@@ -26,7 +25,7 @@ def credential(db):
     if identity is None:
         raise HTTPException(401, 'Подключите GitHub заново.')
     try:
-        return Fernet(get_settings().github_token_key.encode()).decrypt(identity.encrypted_token.encode()).decode()
+        return token_cipher().decrypt(identity.encrypted_token.encode()).decode()
     except (InvalidToken, ValueError):
         raise HTTPException(503, 'Не удалось открыть подключение GitHub. Обратитесь к администратору.') from None
 

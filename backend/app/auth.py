@@ -36,7 +36,16 @@ def digest(value):
 
 def configured():
     s = get_settings()
-    return bool(s.github_client_id and s.github_client_secret and s.github_token_key)
+    return bool(s.github_client_id and s.github_client_secret)
+
+
+def token_cipher():
+    s = get_settings()
+    key = s.github_token_key.encode() if s.github_token_key else base64.urlsafe_b64encode(
+        hashlib.sha256(b'BultShield OAuth storage v1\0' + s.github_client_secret.encode()).digest())
+    if not s.github_client_secret:
+        raise ValueError('OAuth is not configured')
+    return Fernet(key)
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -126,7 +135,7 @@ def callback(request: Request, state: str = '', code: str = ''):
     lifetime = min(43200, max(60, expires_in)) if type(expires_in) is int else 43200
     with Session(get_engine()) as db, db.begin():
         identity = db.scalar(select(GithubIdentity).where(GithubIdentity.github_id == github_id))
-        encrypted = Fernet(s.github_token_key.encode()).encrypt(token.encode()).decode()
+        encrypted = token_cipher().encrypt(token.encode()).decode()
         if identity is None:
             user_id = LEGACY_OWNER if s.legacy_owner_github_id == github_id else uuid.uuid4()
             user = db.get(User, user_id)

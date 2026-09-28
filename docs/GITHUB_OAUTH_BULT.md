@@ -12,7 +12,7 @@
 
 - `GITHUB_CLIENT_ID`: Client ID приложения.
 - `GITHUB_CLIENT_SECRET`: Client Secret, не помещать в GitHub или чат.
-- `GITHUB_TOKEN_KEY`: ключ Fernet, генерируется один раз; сохранять при пересоздании app, иначе потребуется повторный вход.
+- `GITHUB_TOKEN_KEY`: необязательный отдельный ключ Fernet. Если не задан, ключ шифрования получается через SHA-256 с отдельным контекстом из Client Secret; секрет GitHub должен оставаться неизменным, иначе потребуется повторный вход. Отдельный ключ позволяет независимо ротировать Client Secret.
 - `PUBLIC_URL`: `https://bultshield-app-bultshield-ai-brick.fin1.bult.app`.
 - `LEGACY_OWNER_GITHUB_ID`: `191625826` — проверенный GitHub ID tomirizz, владельца существующих проектов. Не login; получить через `https://api.github.com/users/tomirizz`. Без этой настройки существующие проекты не присваиваются новому пользователю.
 - `AUTH_ENABLED=true`: для локальной проверки входа. В `APP_ENV=production` вход обязателен независимо от этого флага. Настроить OAuth до выкладки новой версии, иначе защищённые API будут закрыты до входа.
