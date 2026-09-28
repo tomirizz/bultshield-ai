@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from .api import require_project
 from .database import get_session
-from .models import CorrelationRun, Finding, SecurityIssueGroup
+from .models import CorrelationRun, Finding, Scan, ScanStatus, SecurityIssueGroup
 from .security_dashboard import latest_scans
 
 POLICY = 'risk-v1'
@@ -71,9 +71,12 @@ def review(project_id: uuid.UUID, db: Annotated[Session, Depends(get_session)]):
     require_project(db, project_id)
     findings = db.scalars(select(Finding).where(Finding.scan_id.in_(latest_scans(project_id, completed_only=True)))).all()
     # Historical results need an explicit refresh to persist the current policy.
+    snapshots = db.scalars(select(Scan).where(Scan.id.in_(latest_scans(project_id, completed_only=True)))).all()
+    attempts = db.scalars(select(Scan).where(Scan.id.in_(latest_scans(project_id)))).all()
     items = [(f, f.risk_details or calculate(f, findings)) for f in findings]
     items.sort(key=lambda item: (-item[1]['score'], str(item[0].id)))
-    return {'total': len(items), 'important': sum(r['score'] >= 60 for _, r in items),
+    return {'has_successful_scan': bool(snapshots), 'previous_results': any(s.status == ScanStatus.FAILED for s in attempts),
+            'total': len(items), 'important': sum(r['score'] >= 60 for _, r in items),
             'immediate': sum(r['score'] >= 80 for _, r in items), 'policy': POLICY,
             'issues': [{'finding': FindingOut.model_validate(f), 'risk': risk} for f, risk in items[:20]],
             'notice': 'Приоритет — оценка BultShield, а не severity сканера и не вероятность эксплуатации.'}
