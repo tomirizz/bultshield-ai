@@ -1,3 +1,6 @@
+import { SecurityAgent } from './SecurityAgent';
+import { ContinuousControl, SecurityHistory } from './SecurityHistory';
+import { SecurityReview } from './SecurityReview';
 import { FixReview } from './FixReview';
 import { WebTargets } from './WebTargets';
 import { ProjectCorrelation } from './ProjectCorrelation';
@@ -12,7 +15,7 @@ const scannerNames: Record<string, string> = { gitleaks: 'Gitleaks', semgrep: 'S
 const active = (s: Scan) => !['COMPLETED', 'FAILED'].includes(s.status);
 const date = (v: string | null) => v ? new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(v)) : '—';
 export function go(path: string, values: Record<string, string> = {}) { const query = new URLSearchParams(Object.entries(values).filter(([, v]) => v)); window.location.hash = `/${path}${query.size ? '?' + query : ''}`; }
-export function readRoute() { const [path, query = ''] = window.location.hash.replace(/^#\/?/, '').split('?'); const parts = path.split('/'); return { view: parts[0] === 'projects' && parts[1] ? 'project' : parts[0] === 'findings' ? parts[1] ? 'finding' : 'findings' : parts[0] === 'scans' ? 'activity' : parts[0] === 'system' ? 'system' : 'workspace', id: parts[1] || '', query }; }
+export function readRoute() { const [path, query = ''] = window.location.hash.replace(/^#\/?/, '').split('?'); const parts = path.split('/'); return { view: parts[0] === 'review' ? 'review' : parts[0] === 'projects' && parts[1] ? 'project' : parts[0] === 'findings' ? parts[1] ? 'finding' : 'findings' : parts[0] === 'scans' ? 'activity' : parts[0] === 'system' ? 'system' : 'workspace', id: parts[1] || '', query }; }
 function useData<T>(key: string, load: () => Promise<T>) {
   const [state, setState] = useState<{ key: string; data?: T; error?: string }>({ key });
   useEffect(() => {
@@ -44,9 +47,9 @@ export function ProjectDashboard({ id, onAdd, onStart, busy }: { id: string; onA
   const { data: project, error } = useData<Project>('project:' + id, () => request(`/api/projects/${id}`));
   const { data: scans } = useData<Scan[]>('project-scans:' + id, () => request(`/api/scans?project_id=${id}`));
   if (!project) return <Loading error={error} />;
-  return <div className="security-page"><a className="text-button" href="#/projects">← Все проекты</a><div className="project-title"><h2>{project.name}</h2><p>{project.description || 'Проверки исходного кода и зависимостей проекта.'}</p></div><SecuritySummary projectId={id} />
-    <section className="panel"><div className="panel-heading"><h2>Репозитории</h2><button className="text-button" onClick={() => onAdd(project)}>Добавить репозиторий</button></div>{project.repositories.length ? project.repositories.map(repo => { const running = scans?.some(s => s.repository_id === repo.id && active(s)); return <div className="repository-row" key={repo.id}><a href={repo.url} target="_blank" rel="noreferrer">{repo.url.replace('https://github.com/', '')} ↗</a><span>{repo.default_branch}</span><button className="button secondary" disabled={busy || !scans || running} onClick={() => onStart(repo.id)}>{running ? 'Проверка выполняется' : 'Запустить проверку'}</button></div>; }) : <p className="detail-empty">Добавьте публичный репозиторий GitHub для первой проверки.</p>}</section>
-    <div className="dashboard-links"><a className="button secondary" href={`#/findings?project_id=${id}&scope=latest`}>Находки проекта →</a><a className="button secondary" href={`#/scans?project_id=${id}`}>Вся история проверок →</a></div><WebTargets key={`targets:${id}`} projectId={id} /><ProjectCorrelation key={id} projectId={id} /><ScanHistory query={`project_id=${id}`} projects={[project]} compact />
+  return <div className="security-page"><a className="text-button" href="#/projects">← Все проекты</a><div className="project-title"><h2>{project.name}</h2><p>{project.description || 'Проверки исходного кода и зависимостей проекта.'}</p></div><SecuritySummary projectId={id} /><SecurityReview key={`review:${id}`} projectId={id} /><SecurityAgent key={`agent:${id}`} projectId={id} />
+    <section className="panel"><div className="panel-heading"><h2>Репозитории</h2><button className="text-button" onClick={() => onAdd(project)}>Добавить репозиторий</button></div>{project.repositories.length ? project.repositories.map(repo => { const running = scans?.some(s => s.repository_id === repo.id && active(s)); return <div className="repository-row" key={repo.id}><a href={repo.url} target="_blank" rel="noreferrer">{repo.url.replace('https://github.com/', '')} ↗</a><span>{repo.default_branch}</span><ContinuousControl repositoryId={repo.id} enabled={repo.continuous_enabled} /><button className="button secondary" disabled={busy || !scans || running} onClick={() => onStart(repo.id)}>{running ? 'Проверка выполняется' : 'Запустить проверку'}</button></div>; }) : <p className="detail-empty">Добавьте публичный репозиторий GitHub для первой проверки.</p>}</section>
+    <div className="dashboard-links"><a className="button secondary" href={`#/findings?project_id=${id}&scope=latest`}>Находки проекта →</a><a className="button secondary" href={`#/scans?project_id=${id}`}>Вся история проверок →</a></div><WebTargets key={`targets:${id}`} projectId={id} /><ProjectCorrelation key={id} projectId={id} /><SecurityHistory key={`history:${id}`} projectId={id} /><ScanHistory query={`project_id=${id}`} projects={[project]} compact />
   </div>;
 }
 

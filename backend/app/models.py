@@ -94,6 +94,9 @@ class Repository(Record, Base):
     __table_args__ = (sa.UniqueConstraint("project_id", "url"), sa.UniqueConstraint("project_id", "id"))
     project_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey("projects.id", ondelete="CASCADE"), index=True)
     url: Mapped[str] = mapped_column(sa.String(512))
+    continuous_enabled: Mapped[bool] = mapped_column(default=False, server_default=sa.false())
+    observed_sha: Mapped[str | None] = mapped_column(sa.String(40))
+    last_checked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
     default_branch: Mapped[str] = mapped_column(sa.String(200), default="main", server_default="main")
 
 
@@ -124,6 +127,8 @@ class Finding(Record, Base):
         sa.ForeignKeyConstraint(["project_id", "scan_id"], ["scans.project_id", "scans.id"], ondelete="CASCADE"),
         sa.UniqueConstraint("scan_id", "scanner", "fingerprint"),
         sa.UniqueConstraint("project_id", "id"),
+        sa.CheckConstraint("risk_score BETWEEN 0 AND 100", name="risk_score_range"),
+        sa.CheckConstraint("priority IN ('P0','P1','P2','P3','P4')", name="risk_priority"),
         sa.CheckConstraint("line_start IS NULL OR line_start > 0", name="positive_line"),
         sa.CheckConstraint("line_end IS NULL OR (line_start IS NOT NULL AND line_end >= line_start)", name="line_range"),
     )
@@ -135,6 +140,9 @@ class Finding(Record, Base):
     description: Mapped[str] = mapped_column(sa.Text, default="", server_default="")
     severity: Mapped[Severity] = mapped_column(enum_type(Severity, "severity"), index=True)
     original_severity: Mapped[str | None] = mapped_column(sa.String(50))
+    risk_score: Mapped[int | None]
+    priority: Mapped[str | None] = mapped_column(sa.String(2))
+    risk_details: Mapped[dict | None] = mapped_column(JSONB)
     file: Mapped[str | None] = mapped_column(sa.String(2048))
     line_start: Mapped[int | None]
     line_end: Mapped[int | None]
@@ -252,3 +260,46 @@ class WebTarget(Record, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('projects.id', ondelete='CASCADE'), index=True)
     url: Mapped[str] = mapped_column(sa.String(2048))
     confirmed_control: Mapped[bool] = mapped_column(default=False)
+
+
+class GithubIdentity(Record, Base):
+    __tablename__ = 'github_identities'
+    user_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('users.id'), unique=True)
+    github_id: Mapped[str] = mapped_column(sa.String(32), unique=True)
+    login: Mapped[str] = mapped_column(sa.String(100))
+    encrypted_token: Mapped[str] = mapped_column(sa.Text)
+
+
+class LoginSession(Record, Base):
+    __tablename__ = 'login_sessions'
+    user_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('users.id'), index=True)
+    token_hash: Mapped[str] = mapped_column(sa.String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True))
+
+
+class OAuthState(Record, Base):
+    __tablename__ = 'oauth_states'
+    token_hash: Mapped[str] = mapped_column(sa.String(64), unique=True)
+    verifier: Mapped[str] = mapped_column(sa.String(128))
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True))
+
+
+class AuditEvent(Record, Base):
+    __tablename__ = 'audit_events'
+    user_id: Mapped[uuid.UUID | None] = mapped_column(sa.ForeignKey('users.id'), index=True)
+    action: Mapped[str] = mapped_column(sa.String(100))
+    object_id: Mapped[str | None] = mapped_column(sa.String(64))
+    outcome: Mapped[str] = mapped_column(sa.String(32))
+
+
+class AgentRun(Record, Base):
+    __tablename__ = 'agent_runs'
+    project_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('projects.id', ondelete='CASCADE'), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey('users.id'))
+    question: Mapped[str] = mapped_column(sa.String(1000))
+    allow_actions: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(sa.String(16), default='PENDING')
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(sa.String(300))

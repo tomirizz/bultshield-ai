@@ -57,6 +57,7 @@ class ProjectCreate(BaseModel):
 
 
 class RepositoryOut(Schema):
+    continuous_enabled: bool = False
     id: UUID
     project_id: UUID
     url: str
@@ -103,6 +104,9 @@ class FindingOut(Schema):
     description: str
     severity: Severity
     original_severity: str | None
+    risk_score: int | None = None
+    priority: str | None = None
+    risk_details: dict | None = None
     file: str | None
     line_start: int | None
     line_end: int | None

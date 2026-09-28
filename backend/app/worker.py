@@ -206,6 +206,9 @@ def store_results(data, findings, summaries, verification=None):
     with sessions().begin() as db:
         job, scan = active_records(db, data)
         db.add_all(findings)
+        db.flush()
+        from .risk import persist
+        persist(findings)
         if verification is not None:
             from .verification import finish
             finish(db, data, *verification)
@@ -281,6 +284,7 @@ def main():
     log_trivy_storage()
     database_available = False
     next_cleanup = 0
+    next_poll = 0
 
     while True:
         try:
@@ -290,6 +294,10 @@ def main():
                 except OSError:
                     print("WORKER_CLEANUP_FAILED", flush=True)
                 next_cleanup = time.monotonic() + 60
+            if time.monotonic() >= next_poll:
+                from .continuous import poll_once
+                poll_once()
+                next_poll = time.monotonic() + 30
             recover_stale_jobs()
             data = claim_job()
 
@@ -300,6 +308,9 @@ def main():
             if data is None:
                 from .fix_service import process_next as process_fix
                 if process_fix():
+                    continue
+                from .security_agent import process_next as process_agent
+                if process_agent():
                     continue
                 time.sleep(2)
                 continue

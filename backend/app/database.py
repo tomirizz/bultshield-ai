@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from functools import lru_cache
 
+from fastapi import Request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,6 +19,13 @@ def get_engine():
     )
 
 
-def get_session() -> Generator[Session, None, None]:
+def get_session(request: Request) -> Generator[Session, None, None]:
     with sessionmaker(bind=get_engine(), expire_on_commit=False)() as session:
+        if get_settings().authentication_required:
+            from .tenant import isolate
+            owner_id = getattr(request.state, 'user_id', None)
+            if owner_id is None:
+                from fastapi import HTTPException
+                raise HTTPException(401, 'Войдите через GitHub.')
+            isolate(session, owner_id)
         yield session

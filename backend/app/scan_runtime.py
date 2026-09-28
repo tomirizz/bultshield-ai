@@ -4,6 +4,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from contextlib import contextmanager, suppress
 from contextvars import ContextVar
@@ -72,8 +73,12 @@ def cleanup_orphans(min_age=3600):
             pass
 
 
+def limited_command(command, timeout):
+    return [sys.executable, str(Path(__file__).with_name('process_limits.py')), str(min(1800, max(1, int(timeout)))), *command]
+
+
 def run_process(command, *, cwd, env, timeout):
-    process = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+    process = subprocess.Popen(limited_command(command, timeout), cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, pass_fds=inherited_lock())
     try:
         code = process.wait(timeout=timeout)

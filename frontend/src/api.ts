@@ -1,4 +1,5 @@
 export interface Repository {
+  continuous_enabled: boolean;
   id: string; project_id: string; url: string; default_branch: string; created_at: string;
 }
 export interface Project {

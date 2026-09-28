@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .gitleaks_runner import GitleaksError, _check_size
-from .scan_runtime import inherited_lock, temporary_directory, timeout_seconds
+from .scan_runtime import inherited_lock, limited_command, temporary_directory, timeout_seconds
 from .scanner_catalog import RULES, RULES_PATH, SEMGREP_VERSION
 
 EXTENSIONS = {'.py', '.pyi', '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'}
@@ -103,7 +103,7 @@ def parse_semgrep_report(data, repository: Path, expected_files: int) -> Semgrep
 
 def _run(command, workspace, environment):
     process = subprocess.Popen(
-        command, cwd=workspace, env=environment, stdin=subprocess.DEVNULL,
+        limited_command(command, timeout_seconds("SEMGREP_TIMEOUT_SECONDS", 300)), cwd=workspace, env=environment, stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, pass_fds=inherited_lock(),
     )
     try:
