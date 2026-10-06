@@ -107,8 +107,11 @@ def parse_image_report(data, app_prefixes=APP_PREFIXES):
     by_origin = {}
     for finding in findings:
         by_origin[finding['origin']] = by_origin.get(finding['origin'], 0) + 1
-    image_id = (data.get('Metadata') or {}).get('ImageID')
+    metadata = data.get('Metadata') or {}
+    image_id = metadata.get('ImageID')
+    digests = metadata.get('RepoDigests')
     summary = {'scanned_targets': targets, 'by_origin': by_origin, 'total': len(findings),
                'fixable_app': sum(1 for f in findings if f['origin'] == 'app' and f['manual_reason'] is None),
-               'image_id': image_id if isinstance(image_id, str) else None}
+               'image_id': image_id if isinstance(image_id, str) else None,
+               'repo_digests': [d for d in digests if isinstance(d, str)] if isinstance(digests, list) else []}
     return ImageReport(findings, summary)
