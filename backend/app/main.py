@@ -13,6 +13,7 @@ from .api import router
 from .audit import router as audit_router
 from .auth import router as auth_router
 from .auth import session_user
+from .checks_api import router as checks_router
 from .config import get_settings
 from .continuous import router as continuous_router
 from .correlation import router as correlation_router
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(github_router)
     app.include_router(router)
+    app.include_router(checks_router)
     app.include_router(dashboard_router)
     app.include_router(risk_router)
     app.include_router(ai_router)
