@@ -1,12 +1,13 @@
-"""API запуска проверок: на входе репозиторий (и образ), на выходе идентификатор задания и статус."""
+"""API запуска проверок: на входе репозиторий (и образ), на выходе идентификатор задания, статус и отчёт."""
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from .api import create_scan
+from .check_report import load_report
 from .database import get_session
 from .image_jobs import create_image_scan
 from .models import Scan
@@ -38,3 +39,10 @@ def get_check(check_id: uuid.UUID, db: DB):
     if scan is None or scan.kind == 'verification':
         raise HTTPException(404, 'Проверка не найдена.')
     return scan
+
+
+@router.get('/checks/{check_id}/report')
+def get_check_report(check_id: uuid.UUID, db: DB, limit: Annotated[int, Query(ge=1, le=500)] = 100,
+                     offset: Annotated[int, Query(ge=0)] = 0):
+    """Отчёт: факты (что измерили сканеры), предположения (AI) и предложенные действия раздельно."""
+    return load_report(db, get_check(check_id, db), limit, offset)
