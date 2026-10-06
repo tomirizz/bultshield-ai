@@ -262,6 +262,9 @@ def execute_job(data):
         elif data.kind == 'web':
             from .nuclei_service import run_web_scan
             run_web_scan(data, update_progress, store_results)
+        elif data.kind == 'image':
+            from .image_pipeline import run_image_pipeline
+            run_image_pipeline(data, update_progress, store_results)
         else:
             run_pipeline(data, update_progress, store_results)
 
