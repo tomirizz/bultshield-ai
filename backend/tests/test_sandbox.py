@@ -460,6 +460,8 @@ def test_files_for_a_pull_request_are_returned_only_when_verified(mixed, lab):
     result = mixed()
     assert sorted(result.files) == ['package-lock.json', 'package.json']
     assert json.loads(result.files['package.json'])['dependencies']['lodash'] == '4.18.1'
+    assert json.loads(result.original['package.json'])['dependencies']['lodash'] == '4.17.15'
+    assert 'overrides' not in json.loads(result.original['package.json'])
     assert json.loads(result.files['package.json'])['overrides'] == {'uuid': '11.1.1'}
     assert result.as_dict()['files'] == ['package-lock.json', 'package.json']
     broken = mixed('test_fail')

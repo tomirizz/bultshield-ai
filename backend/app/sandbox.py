@@ -94,6 +94,7 @@ class SandboxResult:
     method: str = ''   # 'direct' (npm install пакет@версия), 'override' (поле overrides) или 'mixed'
     candidates: list = field(default_factory=list)   # [{'package', 'target', 'method'}]
     files: dict = field(default_factory=dict)        # итоговое содержимое package.json и package-lock.json; только при FIX_VERIFIED
+    original: dict = field(default_factory=dict)     # исходное содержимое тех же файлов: PR сверяет с ним репозиторий
 
     def as_dict(self):
         data = {key: getattr(self, key) for key in (
@@ -400,7 +401,7 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidates, targeted
                             'Нужен ручной разбор.', None, **extra)
     _stop(FIX_VERIFIED, f'Тесты, сборка и запуск прошли; все {len(targeted)} целевых находок исчезли после повторного скана. '
                         'Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.', None,
-          files=after, **extra)
+          files=after, original=before, **extra)
 
 
 def _fail_with_diff(result, step, what, diff, uses_network=True, note=''):

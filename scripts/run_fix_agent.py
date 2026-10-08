@@ -7,6 +7,7 @@
 """
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -27,11 +28,14 @@ def plan_only(project, candidate, baseline, **kwargs):
 
 
 def failure_tail(verification, lines=6):
-    """Последние строки лога шага, на котором проверка остановилась (причина сбоя для человека)."""
+    """Причина сбоя: строки с ошибкой из лога шага, на котором проверка остановилась, и несколько последних строк."""
     step = (verification or {}).get('failed_step')
     for entry in (verification or {}).get('steps', []):
         if entry['name'] == step and entry['log_tail']:
-            return '\n'.join('      ' + line for line in entry['log_tail'].splitlines()[-lines:])
+            rows = entry['log_tail'].splitlines()
+            errors = [row for row in rows if re.search(r'Error|ERR_|ERROR|not ok|✖', row)][:4]
+            picked = errors + [row for row in rows[-3:] if row not in errors]
+            return '\n'.join('      ' + row.strip() for row in picked[-lines:])
     return ''
 
 
