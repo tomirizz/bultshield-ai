@@ -118,7 +118,8 @@ def test_package_limit_sends_the_rest_to_manual():
 def test_summary_counts_and_serialization():
     group = [app_finding('lodash', '4.17.15', 'CVE-1', '4.18.1'), app_finding('request', '2.88.2', 'CVE-2', None)]
     result = run_fix_agent('/p', group, registry=registry(), verify=Verifier())
-    assert result.summary == {'packages': 2, FIX_PASSED: 1, FIX_PROPOSED: 0, MANUAL: 1, 'needs_review': 0}
+    assert result.summary == {'packages': 2, FIX_PASSED: 1, FIX_PROPOSED: 0, MANUAL: 1, 'needs_review': 0,
+                              'combined_outcome': FIX_VERIFIED}
     json.dumps(result.as_dict())
 
 
@@ -135,3 +136,63 @@ def test_scan_is_passed_to_the_sandbox_only_when_given():
 def test_module_exposes_statuses_from_the_spec():
     assert {fix_agent.FIX_PASSED, fix_agent.FIX_PROPOSED, fix_agent.MANUAL} == {
         'fix_passed_verification', 'fix_proposed', 'manual_intervention'}
+
+
+# --- совместная проверка набора обновлений ---
+
+def two_fixable():
+    return [app_finding('lodash', '4.17.15', 'CVE-1', '4.18.1'), app_finding('qs', '6.5.2', 'CVE-2', '6.5.3')]
+
+
+def both_registry(package):
+    return (['4.17.15', '4.18.1'] if package == 'lodash' else ['6.5.2', '6.5.3']), []
+
+
+def test_single_verified_fix_reuses_its_own_result_as_the_set():
+    verify, many = Verifier(), Verifier()
+    result = run_fix_agent('/p', findings(), registry=registry(), verify=verify, verify_many=many)
+    assert many.calls == [] and result.combined['packages'] == ['lodash']
+    assert result.combined_result is result.packages[0].result
+
+
+def test_several_verified_fixes_are_checked_together_once():
+    verify, many = Verifier(), Verifier()
+    group = two_fixable()
+    result = run_fix_agent('/p', group, registry=both_registry, verify=verify, verify_many=many)
+    ((project, candidates, baseline, kwargs),) = many.calls
+    assert [(c.package, c.target) for c in candidates] == [('lodash', '4.18.1'), ('qs', '6.5.3')]
+    assert baseline == group and result.combined['packages'] == ['lodash', 'qs']
+    assert result.summary['combined_outcome'] == FIX_VERIFIED
+
+
+def test_fixes_that_pass_alone_but_fail_together_are_reported_as_such():
+    verify, many = Verifier(), Verifier(BREAKS_APP, 'конфликт версий')
+    result = run_fix_agent('/p', two_fixable(), registry=both_registry, verify=verify, verify_many=many)
+    assert [i.status for i in result.packages] == [FIX_PASSED, FIX_PASSED]
+    assert result.summary['combined_outcome'] == BREAKS_APP and result.combined['outcome'] == BREAKS_APP
+
+
+def test_fixes_needing_review_are_left_out_of_the_set():
+    group = [app_finding('uuid', '3.4.0', 'CVE-3', '11.1.1'), app_finding('qs', '6.5.2', 'CVE-2', '6.5.3')]
+
+    def reg(package):
+        return (['3.4.0', '11.1.1'] if package == 'uuid' else ['6.5.2', '6.5.3']), []
+    many = Verifier()
+    result = run_fix_agent('/p', group, registry=reg, verify=Verifier(), verify_many=many)
+    assert many.calls == [] and result.combined['packages'] == ['qs']
+    assert {i.package: i.needs_review for i in result.packages} == {'qs': False, 'uuid': True}
+
+
+def test_no_set_when_nothing_passed_or_combining_is_off():
+    result = run_fix_agent('/p', findings(), registry=registry(), verify=Verifier(BREAKS_APP), verify_many=Verifier())
+    assert result.combined is None and 'combined_outcome' not in result.summary
+    off = run_fix_agent('/p', findings(), registry=registry(), verify=Verifier(), combine=False)
+    assert off.combined is None
+
+
+def test_internal_objects_are_not_serialized():
+    result = run_fix_agent('/p', findings(), registry=registry(), verify=Verifier(), verify_many=Verifier())
+    data = result.as_dict()
+    assert 'candidate' not in data['packages'][0] and 'result' not in data['packages'][0]
+    assert 'combined_result' not in data
+    json.dumps(data)

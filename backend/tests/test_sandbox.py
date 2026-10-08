@@ -52,16 +52,18 @@ case "$1" in
           *@*) ver="${last##*@}" ;;
           *) ver="" ;;
         esac
-        if [ -z "$ver" ]; then
-          # установка без аргумента пакета: имитируем пересборку lock-файла после добавления overrides
-          [ "$mode" = override_ignored ] && exit 0
-          grep -q '"overrides"' "$work/package.json" || { echo "overrides не добавлены" >&2; exit 1; }
-          sed "s/8\\.3\\.2/11.1.1/" "$work/package-lock.json" > "$work/lock.new" && mv "$work/lock.new" "$work/package-lock.json"
-          exit 0
+        [ "$mode" = override_ignored ] && [ -z "$ver" ] && exit 0
+        if [ -n "$ver" ]; then
+          for f in package.json package-lock.json; do
+            sed "s/4\\.17\\.15/$ver/" "$work/$f" > "$work/$f.new" && mv "$work/$f.new" "$work/$f"
+          done
         fi
-        for f in package.json package-lock.json; do
-          sed "s/4\\.17\\.15/$ver/" "$work/$f" > "$work/$f.new" && mv "$work/$f.new" "$work/$f"
-        done
+        if grep -q '"overrides"' "$work/package.json"; then
+          # имитируем пересборку lock-файла после добавления overrides
+          sed "s/8\\.3\\.2/11.1.1/" "$work/package-lock.json" > "$work/lock.new" && mv "$work/lock.new" "$work/package-lock.json"
+        elif [ -z "$ver" ]; then
+          echo "overrides не добавлены" >&2; exit 1
+        fi
         mkdir -p "$work/node_modules"; echo x > "$work/node_modules/marker"
         exit 0 ;;
       *" npm test"*)
@@ -117,6 +119,8 @@ def lab(tmp_path, monkeypatch):
         return verify_fix(project, candidate or FixCandidate('lodash', '4.18.1'), BASELINE if baseline is None else baseline,
                           config=cfg or config, scan=scan or rescan_of([finding('CVE-2025-0001', 'debian-pkg', 'os')]))
 
+    run.bin_dir = bin_dir
+    run.config = config
     run.calls = lambda: (bin_dir / 'calls.txt').read_text().splitlines() if (bin_dir / 'calls.txt').exists() else []
     run.project = project
     run.work_root = tmp_path / 'sbx'
@@ -406,3 +410,80 @@ def test_existing_overrides_are_kept(transitive):
     assert result.outcome == FIX_VERIFIED
     # прежний override сохранён (к нему лишь добавилась запятая), новый добавлен рядом
     assert '+    "minimist": "1.2.8",' in result.diff and '+    "uuid": "11.1.1"' in result.diff
+
+
+# --- несколько обновлений вместе (один будущий PR) ---
+
+MIXED_MANIFEST = {'name': 'demo', 'version': '1.0.0', 'scripts': {'test': 'node --test'},
+                  'dependencies': {'lodash': '4.17.15', 'request': '2.88.2'}}
+MIXED_LOCK = ('{"lockfileVersion": 3, "packages": {"node_modules/lodash": {"version": "4.17.15"},'
+              ' "node_modules/request": {"version": "2.88.2"}, "node_modules/uuid": {"version": "8.3.2"}}}\n')
+MIXED_BASELINE = [finding('CVE-2020-8203'), finding('CVE-2026-41907', 'uuid')]
+BOTH = [FixCandidate('lodash', '4.18.1'), FixCandidate('uuid', '11.1.1')]
+BOTH_PACKAGES = good_packages() + [{'name': 'uuid', 'version': '11.1.1', 'path': 'app/node_modules/uuid/package.json',
+                                    'origin': 'app'}]
+
+
+@pytest.fixture
+def mixed(lab):
+    (lab.project / 'package.json').write_text(json.dumps(MIXED_MANIFEST, indent=2) + '\n')
+    (lab.project / 'package-lock.json').write_text(MIXED_LOCK)
+
+    def run(mode='ok', packages=None, findings=(), candidates=None, baseline=None):
+        batch = candidates or BOTH
+        (lab.bin_dir / 'mode').write_text(mode)
+        seen = BOTH_PACKAGES if packages is None else packages
+        return sandbox.verify_fixes(lab.project, batch, MIXED_BASELINE if baseline is None else baseline,
+                                    config=lab.config, scan=rescan_of(list(findings), seen))
+
+    run.lab = lab
+    return run
+
+
+def test_several_fixes_are_verified_together_in_one_pass(mixed):
+    result = mixed()
+    assert result.outcome == FIX_VERIFIED, result.reason
+    assert result.method == 'mixed'
+    assert result.candidates == [{'package': 'lodash', 'target': '4.18.1', 'method': 'direct'},
+                                 {'package': 'uuid', 'target': '11.1.1', 'method': 'override'}]
+    assert sorted(f['package'] for f in result.resolved) == ['lodash', 'uuid']
+    calls = mixed.lab.calls()
+    installs = [c for c in calls if 'npm install' in c]
+    assert len(installs) == 1 and 'lodash@4.18.1' in installs[0] and '--save-exact' in installs[0]
+    assert 'uuid@' not in installs[0]
+    assert sum(c.startswith('build') for c in calls) == 1 and sum(c.startswith('save') for c in calls) == 1
+    assert '+    "lodash": "4.18.1"' in result.diff or '"lodash": "4.18.1"' in result.diff
+    assert '"overrides"' in result.diff
+
+
+def test_files_for_a_pull_request_are_returned_only_when_verified(mixed, lab):
+    result = mixed()
+    assert sorted(result.files) == ['package-lock.json', 'package.json']
+    assert json.loads(result.files['package.json'])['dependencies']['lodash'] == '4.18.1'
+    assert json.loads(result.files['package.json'])['overrides'] == {'uuid': '11.1.1'}
+    assert result.as_dict()['files'] == ['package-lock.json', 'package.json']
+    broken = mixed('test_fail')
+    assert broken.outcome == BREAKS_APP and broken.files == {}
+
+
+def test_one_unseen_package_makes_the_whole_batch_inconclusive(mixed):
+    result = mixed(packages=good_packages())
+    assert result.outcome == INCONCLUSIVE and 'uuid 11.1.1' in result.reason and 'lodash 4.18.1' not in result.reason
+
+
+def test_one_remaining_finding_fails_the_batch(mixed):
+    result = mixed(findings=[finding('CVE-2026-41907', 'uuid')])
+    assert result.outcome == STILL_DETECTED
+    assert [f['package'] for f in result.remaining] == ['uuid'] and [f['package'] for f in result.resolved] == ['lodash']
+
+
+def test_candidate_without_findings_stops_before_docker(mixed):
+    result = mixed(baseline=[finding('CVE-2020-8203')])
+    assert result.outcome == INCONCLUSIVE and 'uuid' in result.reason and mixed.lab.calls() == []
+
+
+@pytest.mark.parametrize('batch', [[], [FixCandidate('lodash', '4.18.1'), FixCandidate('lodash', '4.18.0')],
+                                   [FixCandidate(f'pkg{n}', '1.0.0') for n in range(11)]])
+def test_batch_size_and_duplicates_are_validated(lab, batch):
+    with pytest.raises(ValueError):
+        sandbox.verify_fixes(lab.project, batch, BASELINE)

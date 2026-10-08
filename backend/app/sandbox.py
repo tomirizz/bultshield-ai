@@ -91,12 +91,16 @@ class SandboxResult:
     remaining: list = field(default_factory=list)
     introduced: list = field(default_factory=list)
     scan_db_updated_at: str | None = None
-    method: str = ''   # 'direct' (npm install пакет@версия) или 'override' (поле overrides, транзитивная зависимость)
+    method: str = ''   # 'direct' (npm install пакет@версия), 'override' (поле overrides) или 'mixed'
+    candidates: list = field(default_factory=list)   # [{'package', 'target', 'method'}]
+    files: dict = field(default_factory=dict)        # итоговое содержимое package.json и package-lock.json; только при FIX_VERIFIED
 
     def as_dict(self):
-        return {key: getattr(self, key) for key in (
+        data = {key: getattr(self, key) for key in (
             'outcome', 'reason', 'failed_step', 'steps', 'diff', 'resolved', 'remaining', 'introduced',
-            'scan_db_updated_at', 'method')}
+            'scan_db_updated_at', 'method', 'candidates')}
+        data['files'] = sorted(self.files)   # сами файлы большие и отдаются отдельно через .files
+        return data
 
 
 @dataclass(frozen=True)
@@ -199,12 +203,23 @@ def _read_manifest(project):
     return data, None
 
 
+MAX_CANDIDATES = 10
+
+
 def verify_fix(project_dir, candidate, baseline, *, config=None, scan=run_archive_scan):
-    """Проверяет обновление `candidate` в копии проекта. `baseline` — находки исходного образа (parse_image_report)."""
+    """Проверяет одно обновление `candidate` в копии проекта. `baseline` — находки исходного образа."""
+    return verify_fixes(project_dir, [candidate], baseline, config=config, scan=scan)
+
+
+def verify_fixes(project_dir, candidates, baseline, *, config=None, scan=run_archive_scan):
+    """Проверяет несколько обновлений вместе, как будущий один PR: одна копия, одна сборка, один повторный скан."""
+    candidates = list(candidates)
+    if not 1 <= len(candidates) <= MAX_CANDIDATES or len({c.package for c in candidates}) != len(candidates):
+        raise ValueError(f'Нужно от 1 до {MAX_CANDIDATES} обновлений, каждый пакет не более одного раза.')
     config = config or SandboxConfig()
     steps = []
     try:
-        return _verify(Path(project_dir), candidate, baseline, config, scan, steps)
+        return _verify(Path(project_dir), candidates, baseline, config, scan, steps)
     except _Stop as stop:
         stop.result.steps = steps
         return stop.result
@@ -214,29 +229,35 @@ def _stop(outcome, reason, step=None, **extra):
     raise _Stop(SandboxResult(outcome, reason, step, **extra))
 
 
-def _verify(project, candidate, baseline, config, scan, steps):
+def _verify(project, candidates, baseline, config, scan, steps):
     if not project.is_dir():
         _stop(INCONCLUSIVE, 'Папка проекта не найдена.')
     manifest, problem = _read_manifest(project)
     if problem:
         _stop(INCONCLUSIVE, problem)
     declared = {**(manifest.get('devDependencies') or {}), **(manifest.get('dependencies') or {})}
-    method = 'direct'
-    if candidate.package not in declared:
-        method = 'override'
-        found = _in_lock((project / 'package-lock.json').read_text(), candidate.package)
-        if found is None:
-            _stop(INCONCLUSIVE, 'package-lock.json старого формата или повреждён: транзитивную зависимость нельзя найти.')
-        if not found:
-            _stop(INCONCLUSIVE, f'Пакета {candidate.package} нет ни в package.json, ни в package-lock.json: обновлять нечего.')
+    methods = {}
+    for candidate in candidates:
+        methods[candidate.package] = 'direct'
+        if candidate.package not in declared:
+            methods[candidate.package] = 'override'
+            found = _in_lock((project / 'package-lock.json').read_text(), candidate.package)
+            if found is None:
+                _stop(INCONCLUSIVE, 'package-lock.json старого формата или повреждён: транзитивную зависимость нельзя найти.')
+            if not found:
+                _stop(INCONCLUSIVE, f'Пакета {candidate.package} нет ни в package.json, ни в package-lock.json: '
+                                    'обновлять нечего.')
     test_script = (manifest.get('scripts') or {}).get('test')
     if not isinstance(test_script, str) or _PLACEHOLDER_TEST.search(test_script):
         _stop(INCONCLUSIVE, 'В проекте нет настоящего скрипта test: исправление нельзя проверить тестами.')
-    targeted = {(f['rule_id'], f['package']) for f in baseline
-                if f.get('origin') == 'app' and f['package'] == candidate.package
-                and (not candidate.resolves or f['rule_id'] in candidate.resolves)}
-    if not targeted:
-        _stop(INCONCLUSIVE, f'В исходном отчёте нет находок по пакету {candidate.package}: проверять нечего.')
+    targeted = set()
+    for candidate in candidates:
+        found = {(f['rule_id'], f['package']) for f in baseline
+                 if f.get('origin') == 'app' and f['package'] == candidate.package
+                 and (not candidate.resolves or f['rule_id'] in candidate.resolves)}
+        if not found:
+            _stop(INCONCLUSIVE, f'В исходном отчёте нет находок по пакету {candidate.package}: проверять нечего.')
+        targeted |= found
     docker = shutil.which('docker')
     if not docker:
         _stop(INCONCLUSIVE, 'Docker не установлен: изолированная проверка невозможна на этом компьютере.')
@@ -256,10 +277,13 @@ def _verify(project, candidate, baseline, config, scan, steps):
             (work / '.dockerignore').write_text('node_modules\n.git\n')
         before = {name: (work / name).read_text() for name in ('package.json', 'package-lock.json')}
         try:
-            return _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline,
-                             before, config, scan, steps, method)
+            return _pipeline(docker, work, logs, archive, tag, containers, candidates, targeted, baseline,
+                             before, config, scan, steps)
         except _Stop as stop:
-            stop.result.method = method
+            kinds = set(methods.values())
+            stop.result.method = kinds.pop() if len(kinds) == 1 else 'mixed'
+            stop.result.candidates = [{'package': c.package, 'target': c.target, 'method': methods[c.package]}
+                                      for c in candidates]
             raise
         finally:
             for name in containers:
@@ -284,8 +308,7 @@ def _fail(result, step, what, uses_network=True, note=''):
     _stop(BREAKS_APP, f'Шаг «{what}» завершился с ошибкой после обновления (код {result.code}).{note}', step)
 
 
-def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline, before, config, scan, steps,
-              method):
+def _pipeline(docker, work, logs, archive, tag, containers, candidates, targeted, baseline, before, config, scan, steps):
     install_name, test_name, app_name = containers
     info = _step('docker', [docker, 'info'], 30, logs, steps)
     if info.code != 0:
@@ -294,15 +317,22 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
     common = ['--platform', config.platform, '-v', f'{work}:/work', '-w', '/work', '-e', 'HOME=/tmp',
               *LIMITS, '--memory', '512m', '--cpus', '1', *user]
 
-    if method == 'direct':
-        arguments = ['--save-exact', '--ignore-scripts', '--no-audit', '--no-fund', f'{candidate.package}@{candidate.target}']
-    else:
-        # Транзитивная зависимость: пишем overrides в package.json, затем npm пересобирает lock-файл.
-        try:
-            (work / 'package.json').write_text(_with_override(before['package.json'], candidate.package, candidate.target))
-        except ValueError as exc:
-            _stop(INCONCLUSIVE, f'Не удалось добавить overrides: {exc}. Нужен ручной разбор.', 'install')
-        arguments = ['--ignore-scripts', '--no-audit', '--no-fund']
+    declared = {**(json.loads(before['package.json']).get('devDependencies') or {}),
+                **(json.loads(before['package.json']).get('dependencies') or {})}
+    direct = [c for c in candidates if c.package in declared]
+    # Транзитивные зависимости: пишем overrides в package.json, затем npm пересобирает lock-файл.
+    text = before['package.json']
+    try:
+        for candidate in candidates:
+            if candidate.package not in declared:
+                text = _with_override(text, candidate.package, candidate.target)
+    except ValueError as exc:
+        _stop(INCONCLUSIVE, f'Не удалось добавить overrides: {exc}. Нужен ручной разбор.', 'install')
+    if text != before['package.json']:
+        (work / 'package.json').write_text(text)
+    arguments = ['--ignore-scripts', '--no-audit', '--no-fund']
+    if direct:
+        arguments = ['--save-exact', *arguments, *(f'{c.package}@{c.target}' for c in direct)]
     install = [docker, 'run', '--rm', '--name', install_name, *common, config.node_image, 'npm', 'install', *arguments]
     result = _step('install', install, config.install_timeout, logs, steps)
     if result.code != 0:
@@ -348,12 +378,12 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
         _stop(INCONCLUSIVE, f'Повторный скан не выполнен: {exc} Это не означает, что уязвимостей нет.', 'rescan', diff=diff)
     steps.append({'name': 'rescan', 'status': 'passed', 'seconds': round(time.monotonic() - started, 1), 'log_tail': ''})
 
-    packages = rescan.report.summary.get('packages')
-    seen = packages is not None and any(
-        p['name'] == candidate.package and p['version'] == candidate.target and p['origin'] == 'app' for p in packages)
-    if not seen:
-        _stop(INCONCLUSIVE, f'В пересобранном образе Trivy не нашёл {candidate.package} {candidate.target} среди пакетов '
-                            'приложения: нельзя утверждать, что скан увидел приложение. Пустой список находок не принят за «чисто».',
+    packages = rescan.report.summary.get('packages') or []
+    missing = [f'{c.package} {c.target}' for c in candidates
+               if not any(p['name'] == c.package and p['version'] == c.target and p['origin'] == 'app' for p in packages)]
+    if missing:
+        _stop(INCONCLUSIVE, f"В пересобранном образе Trivy не нашёл среди пакетов приложения: {', '.join(missing)}. "
+                            'Нельзя утверждать, что скан увидел приложение. Пустой список находок не принят за «чисто».',
               'rescan', diff=diff, scan_db_updated_at=rescan.db_updated_at)
 
     now = _keys(rescan.report.findings)
@@ -369,7 +399,8 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
         _stop(NEW_FINDINGS, f'Целевые находки закрыты, но обновление принесло новых находок приложения: {len(introduced)}. '
                             'Нужен ручной разбор.', None, **extra)
     _stop(FIX_VERIFIED, f'Тесты, сборка и запуск прошли; все {len(targeted)} целевых находок исчезли после повторного скана. '
-                        'Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.', None, **extra)
+                        'Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.', None,
+          files=after, **extra)
 
 
 def _fail_with_diff(result, step, what, diff, uses_network=True, note=''):

@@ -26,6 +26,15 @@ def plan_only(project, candidate, baseline, **kwargs):
     return SimpleNamespace(outcome=INCONCLUSIVE, reason=reason, as_dict=lambda: {'outcome': INCONCLUSIVE, 'reason': reason})
 
 
+def failure_tail(verification, lines=6):
+    """Последние строки лога шага, на котором проверка остановилась (причина сбоя для человека)."""
+    step = (verification or {}).get('failed_step')
+    for entry in (verification or {}).get('steps', []):
+        if entry['name'] == step and entry['log_tail']:
+            return '\n'.join('      ' + line for line in entry['log_tail'].splitlines()[-lines:])
+    return ''
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('project')
@@ -46,10 +55,21 @@ def main():
         print(f'\n  {item.package}  {target}{review}\n    {LABELS[item.status]}\n    {item.reason}')
         if item.verification and item.verification.get('method'):
             print(f"    способ: {item.verification['method']}")
+        tail = failure_tail(item.verification)
+        if tail and item.status != FIX_PASSED:
+            print(f'    конец лога шага «{item.verification["failed_step"]}»:\n{tail}')
     if result.other:
         print('\nНе приложение (ручной разбор, песочница не применяется):')
         for group in result.other:
             print(f"  {group['origin']:<13} {group['count']:>3} шт.: {group['reason']}")
+    if result.combined:
+        combined = result.combined
+        print(f"\nСовместная проверка набора ({', '.join(combined['packages'])}): {combined['outcome']}\n  {combined['reason']}")
+        tail = failure_tail(combined)
+        if tail:
+            print(f'  конец лога:\n{tail}')
+        if combined['outcome'] == 'FIX_VERIFIED':
+            print('  Этот набор можно оформить одним PR после подтверждения человеком.')
     print(f'\nИтого: {result.summary}')
     if args.json:
         Path(args.json).expanduser().write_text(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))

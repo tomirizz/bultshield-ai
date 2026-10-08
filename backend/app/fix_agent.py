@@ -2,8 +2,9 @@
 
 Что делает: берёт находки приложения, для каждого пакета выбирает версию (dependency_fix.plan_update по данным
 реестра npm), проверяет её в песочнице (sandbox.verify_fix) и присваивает пакету один из статусов ТЗ.
-Чего не делает: не меняет проект, не создаёт PR и не вызывает LLM. Пакеты проверяются по одному, каждый
-в чистой копии; совместная проверка нескольких обновлений в одном PR остаётся задачей следующего шага.
+Чего не делает: не меняет проект, не создаёт PR и не вызывает LLM. Каждый пакет сначала проверяется
+отдельно в чистой копии. Затем все прошедшие проверку и не требующие просмотра обновления проверяются вместе
+(одна копия, одна сборка), потому что именно набор из них станет одним PR.
 """
 from dataclasses import dataclass, field
 
@@ -18,6 +19,7 @@ from .sandbox import (
     FixCandidate,
     SandboxConfig,
     verify_fix,
+    verify_fixes,
 )
 
 # Статусы из ТЗ, которые может присвоить этот модуль. «Обнаружена» и «исправление применено» задаются в других местах.
@@ -45,9 +47,12 @@ class PackageItem:
     needs_review: bool = False
     plan: dict = field(default_factory=dict)
     verification: dict | None = None
+    # Служебные объекты для следующих шагов (PR). В JSON не попадают: файлы могут быть большими.
+    candidate: object = field(default=None, repr=False, compare=False)
+    result: object = field(default=None, repr=False, compare=False)
 
     def as_dict(self):
-        return dict(self.__dict__)
+        return {key: value for key, value in self.__dict__.items() if key not in ('candidate', 'result')}
 
 
 @dataclass
@@ -55,9 +60,12 @@ class AgentResult:
     packages: list
     other: list          # не приложение: ОС, инструменты базового образа и т.п.
     summary: dict
+    combined: dict | None = None            # итог совместной проверки набора обновлений (None, если набора нет)
+    combined_result: object = field(default=None, repr=False, compare=False)
 
     def as_dict(self):
-        return {'packages': [p.as_dict() for p in self.packages], 'other': self.other, 'summary': self.summary}
+        return {'packages': [p.as_dict() for p in self.packages], 'other': self.other, 'summary': self.summary,
+                'combined': self.combined}
 
 
 def _lowest(versions):
@@ -76,8 +84,8 @@ def _other_groups(findings):
             for (origin, reason), items in sorted(groups.items(), key=lambda kv: (kv[0][0], str(kv[0][1])))]
 
 
-def run_fix_agent(project_dir, findings, *, registry=fetch_versions, verify=verify_fix, config=None, scan=None,
-                  max_packages=MAX_PACKAGES):
+def run_fix_agent(project_dir, findings, *, registry=fetch_versions, verify=verify_fix, verify_many=verify_fixes,
+                  config=None, scan=None, max_packages=MAX_PACKAGES, combine=True):
     """findings: список находок из parse_image_report. Возвращает AgentResult."""
     config = config or SandboxConfig()
     by_package = {}
@@ -93,7 +101,27 @@ def run_fix_agent(project_dir, findings, *, registry=fetch_versions, verify=veri
                                      f'превышен лимит {max_packages} пакетов за одну проверку'))
             continue
         items.append(_handle_package(project_dir, findings, package, installed, group, ids, registry, verify, config, scan))
-    return AgentResult(items, _other_groups(findings), _summary(items))
+    result = AgentResult(items, _other_groups(findings), _summary(items))
+    if combine:
+        _combine(result, project_dir, findings, verify_many, config, scan)
+    return result
+
+
+def _combine(result, project_dir, findings, verify_many, config, scan):
+    """Проверяет вместе все обновления, прошедшие отдельную проверку и не требующие просмотра человеком."""
+    chosen = [i for i in result.packages if i.status == FIX_PASSED and not i.needs_review]
+    if not chosen:
+        return
+    if len(chosen) == 1:
+        outcome = chosen[0].result   # отдельная проверка уже совпадает с набором из одного обновления
+    else:
+        kwargs = {'config': config}
+        if scan is not None:
+            kwargs['scan'] = scan
+        outcome = verify_many(project_dir, [i.candidate for i in chosen], findings, **kwargs)
+    result.combined_result = outcome
+    result.combined = {'packages': [i.package for i in chosen], **outcome.as_dict()}
+    result.summary['combined_outcome'] = outcome.outcome
 
 
 def _handle_package(project_dir, findings, package, installed, group, ids, registry, verify, config, scan):
@@ -117,8 +145,9 @@ def _handle_package(project_dir, findings, package, installed, group, ids, regis
     if scan is not None:
         kwargs['scan'] = scan
     result = verify(project_dir, FixCandidate(package, plan.target, resolves=plan.resolves), findings, **kwargs)
-    item = PackageItem(package, installed, ids, MANUAL, result.reason, target=plan.target,
-                       major_change=plan.major_change, plan=described, verification=result.as_dict())
+    candidate = FixCandidate(package, plan.target, resolves=plan.resolves)
+    item = PackageItem(package, installed, ids, MANUAL, result.reason, target=plan.target, major_change=plan.major_change,
+                       plan=described, verification=result.as_dict(), candidate=candidate, result=result)
     if result.outcome == FIX_VERIFIED:
         item.status = FIX_PASSED
         item.needs_review = plan.major_change
