@@ -48,7 +48,17 @@ case "$1" in
         [ "$mode" = install_net ] && { echo "npm error code ETIMEDOUT" >&2; exit 1; }
         [ "$mode" = install_slow ] && sleep 30
         [ "$mode" = install_noop ] && exit 0
-        ver="${last##*@}"
+        case "$last" in
+          *@*) ver="${last##*@}" ;;
+          *) ver="" ;;
+        esac
+        if [ -z "$ver" ]; then
+          # установка без аргумента пакета: имитируем пересборку lock-файла после добавления overrides
+          [ "$mode" = override_ignored ] && exit 0
+          grep -q '"overrides"' "$work/package.json" || { echo "overrides не добавлены" >&2; exit 1; }
+          sed "s/8\\.3\\.2/11.1.1/" "$work/package-lock.json" > "$work/lock.new" && mv "$work/lock.new" "$work/package-lock.json"
+          exit 0
+        fi
         for f in package.json package-lock.json; do
           sed "s/4\\.17\\.15/$ver/" "$work/$f" > "$work/$f.new" && mv "$work/$f.new" "$work/$f"
         done
@@ -267,7 +277,6 @@ def test_save_failure_is_inconclusive(lab):
 
 @pytest.mark.parametrize('prepare,text', [
     (lambda p: (p / 'package-lock.json').unlink(), 'lock'),
-    (lambda p: (p / 'package.json').write_text(json.dumps({**MANIFEST, 'dependencies': {}})), 'транзитивная'),
     (lambda p: (p / 'package.json').write_text(
         json.dumps({**MANIFEST, 'scripts': {'test': 'echo "Error: no test specified" && exit 1'}})), 'test'),
     (lambda p: (p / 'package.json').write_text(json.dumps({**MANIFEST, 'scripts': {}})), 'test'),
@@ -314,3 +323,86 @@ def test_config_rejects_unsafe_values(kwargs):
 
 def test_result_is_json_serializable(lab):
     json.dumps(lab().as_dict())
+
+
+# --- транзитивные зависимости: обновление через overrides ---
+
+TRANSITIVE_MANIFEST = {'name': 'demo', 'version': '1.0.0', 'scripts': {'test': 'node --test'},
+                       'dependencies': {'request': '2.88.2'}}
+TRANSITIVE_LOCK = ('{"lockfileVersion": 3, "packages": {"node_modules/request": {"version": "2.88.2"},'
+                   ' "node_modules/uuid": {"version": "8.3.2"}}}\n')
+UUID_BASELINE = [finding('CVE-2026-41907', 'uuid')]
+UUID_CANDIDATE = FixCandidate('uuid', '11.1.1')
+
+
+@pytest.fixture
+def transitive(lab):
+    (lab.project / 'package.json').write_text(json.dumps(TRANSITIVE_MANIFEST, indent=4) + '\n')
+    (lab.project / 'package-lock.json').write_text(TRANSITIVE_LOCK)
+
+    def run(mode='ok', packages='default', findings=()):
+        wanted = [{'name': 'uuid', 'version': '11.1.1', 'path': 'app/node_modules/uuid/package.json', 'origin': 'app'}]
+        return lab(mode, candidate=UUID_CANDIDATE, baseline=UUID_BASELINE,
+                   scan=rescan_of(list(findings), wanted if packages == 'default' else packages))
+
+    run.lab = lab
+    return run
+
+
+def test_transitive_dependency_is_fixed_with_overrides(transitive):
+    result = transitive()
+    assert result.outcome == FIX_VERIFIED, result.reason
+    assert result.method == 'override'
+    # индекс отступа исходного файла (4 пробела) сохраняется, пакет не становится прямой зависимостью
+    assert '+    "overrides": {' in result.diff and '+        "uuid": "11.1.1"' in result.diff
+    install = next(c for c in transitive.lab.calls() if 'npm install' in c)
+    assert install.endswith('npm install --ignore-scripts --no-audit --no-fund')
+    assert '--save-exact' not in install and 'uuid@' not in install
+
+
+def test_direct_dependency_reports_direct_method(lab):
+    assert lab().method == 'direct'
+
+
+def test_override_that_breaks_tests_is_reported_as_breaking(transitive):
+    result = transitive('test_fail')
+    assert result.outcome == BREAKS_APP and result.failed_step == 'tests' and result.method == 'override'
+    assert '"overrides"' in result.diff
+
+
+def test_override_that_npm_ignored_is_not_verified(transitive):
+    result = transitive('override_ignored')
+    assert result.outcome == INCONCLUSIVE and result.failed_step == 'install'
+    assert 'package-lock.json не изменился' in result.reason
+    assert not any(c.startswith('build') for c in transitive.lab.calls())
+
+
+def test_package_missing_from_lock_is_inconclusive(lab):
+    (lab.project / 'package.json').write_text(json.dumps(TRANSITIVE_MANIFEST) + '\n')
+    (lab.project / 'package-lock.json').write_text('{"lockfileVersion": 3, "packages": {"node_modules/request": {}}}')
+    result = lab(candidate=UUID_CANDIDATE, baseline=UUID_BASELINE)
+    assert result.outcome == INCONCLUSIVE and 'нет ни в package.json' in result.reason
+    assert lab.calls() == []
+
+
+def test_old_lock_format_is_inconclusive(lab):
+    (lab.project / 'package.json').write_text(json.dumps(TRANSITIVE_MANIFEST) + '\n')
+    (lab.project / 'package-lock.json').write_text('{"lockfileVersion": 1, "dependencies": {"uuid": {}}}')
+    result = lab(candidate=UUID_CANDIDATE, baseline=UUID_BASELINE)
+    assert result.outcome == INCONCLUSIVE and 'старого формата' in result.reason
+
+
+def test_nested_override_is_left_to_a_human(transitive):
+    manifest = {**TRANSITIVE_MANIFEST, 'overrides': {'uuid': {'.': '8.0.0'}}}
+    (transitive.lab.project / 'package.json').write_text(json.dumps(manifest) + '\n')
+    result = transitive()
+    assert result.outcome == INCONCLUSIVE and 'overrides' in result.reason and result.failed_step == 'install'
+
+
+def test_existing_overrides_are_kept(transitive):
+    manifest = {**TRANSITIVE_MANIFEST, 'overrides': {'minimist': '1.2.8'}}
+    (transitive.lab.project / 'package.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    result = transitive()
+    assert result.outcome == FIX_VERIFIED
+    # прежний override сохранён (к нему лишь добавилась запятая), новый добавлен рядом
+    assert '+    "minimist": "1.2.8",' in result.diff and '+    "uuid": "11.1.1"' in result.diff

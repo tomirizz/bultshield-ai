@@ -5,7 +5,8 @@
 Исходный проект не меняется: все действия идут в копии. Неопределённый результат (нет Docker, таймаут,
 сбой сканера) никогда не выдаётся за «исправление подтверждено».
 
-Ограничения первой версии: Node.js/npm, прямая зависимость из package.json, образ приложения должен
+Ограничения первой версии: Node.js/npm; прямые зависимости обновляются через `npm install пакет@версия`,
+транзитивные (их подтягивает другой пакет) — через поле `overrides` в package.json; образ приложения должен
 содержать Node.js (проверка /health идёт командой `node` внутри контейнера). Dockerfile проекта
 считается недоверенным кодом только условно: сборка идёт с сетью, поэтому проект должен быть учебным.
 """
@@ -90,11 +91,12 @@ class SandboxResult:
     remaining: list = field(default_factory=list)
     introduced: list = field(default_factory=list)
     scan_db_updated_at: str | None = None
+    method: str = ''   # 'direct' (npm install пакет@версия) или 'override' (поле overrides, транзитивная зависимость)
 
     def as_dict(self):
         return {key: getattr(self, key) for key in (
             'outcome', 'reason', 'failed_step', 'steps', 'diff', 'resolved', 'remaining', 'introduced',
-            'scan_db_updated_at')}
+            'scan_db_updated_at', 'method')}
 
 
 @dataclass(frozen=True)
@@ -161,6 +163,29 @@ def _keys(findings):
     return {(f['rule_id'], f['package']) for f in findings if f.get('origin') == 'app'}
 
 
+def _in_lock(lock_text, package):
+    """Есть ли пакет среди установленных по package-lock.json (lockfileVersion 2/3)."""
+    try:
+        entries = json.loads(lock_text).get('packages')
+    except ValueError:
+        return None
+    if not isinstance(entries, dict):
+        return None
+    return any(key == f'node_modules/{package}' or key.endswith(f'/node_modules/{package}') for key in entries)
+
+
+def _with_override(text, package, version):
+    """package.json с добавленным overrides[package] = version. Отступ исходного файла сохраняется."""
+    data = json.loads(text)
+    overrides = data.get('overrides', {})
+    if not isinstance(overrides, dict) or isinstance(overrides.get(package), dict):
+        raise ValueError('overrides имеет вложенный вид, который первая версия не меняет')
+    overrides[package] = version
+    data['overrides'] = overrides
+    indent = re.search(r'^( +|\t)"', text, re.M)
+    return json.dumps(data, indent=indent.group(1) if indent else '  ', ensure_ascii=False) + '\n'
+
+
 def _read_manifest(project):
     manifest, lock = project / 'package.json', project / 'package-lock.json'
     if not manifest.is_file() or not lock.is_file():
@@ -196,9 +221,14 @@ def _verify(project, candidate, baseline, config, scan, steps):
     if problem:
         _stop(INCONCLUSIVE, problem)
     declared = {**(manifest.get('devDependencies') or {}), **(manifest.get('dependencies') or {})}
+    method = 'direct'
     if candidate.package not in declared:
-        _stop(INCONCLUSIVE, f'Пакет {candidate.package} не указан в package.json напрямую (транзитивная зависимость). '
-                            'Первая версия обновляет только прямые зависимости: нужен ручной разбор.')
+        method = 'override'
+        found = _in_lock((project / 'package-lock.json').read_text(), candidate.package)
+        if found is None:
+            _stop(INCONCLUSIVE, 'package-lock.json старого формата или повреждён: транзитивную зависимость нельзя найти.')
+        if not found:
+            _stop(INCONCLUSIVE, f'Пакета {candidate.package} нет ни в package.json, ни в package-lock.json: обновлять нечего.')
     test_script = (manifest.get('scripts') or {}).get('test')
     if not isinstance(test_script, str) or _PLACEHOLDER_TEST.search(test_script):
         _stop(INCONCLUSIVE, 'В проекте нет настоящего скрипта test: исправление нельзя проверить тестами.')
@@ -227,7 +257,10 @@ def _verify(project, candidate, baseline, config, scan, steps):
         before = {name: (work / name).read_text() for name in ('package.json', 'package-lock.json')}
         try:
             return _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline,
-                             before, config, scan, steps)
+                             before, config, scan, steps, method)
+        except _Stop as stop:
+            stop.result.method = method
+            raise
         finally:
             for name in containers:
                 _execute([docker, 'rm', '-f', name], 30, logs)
@@ -251,7 +284,8 @@ def _fail(result, step, what, uses_network=True):
     _stop(BREAKS_APP, f'Шаг «{what}» завершился с ошибкой после обновления (код {result.code}).', step)
 
 
-def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline, before, config, scan, steps):
+def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline, before, config, scan, steps,
+              method):
     install_name, test_name, app_name = containers
     info = _step('docker', [docker, 'info'], 30, logs, steps)
     if info.code != 0:
@@ -260,8 +294,16 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
     common = ['--platform', config.platform, '-v', f'{work}:/work', '-w', '/work', '-e', 'HOME=/tmp',
               *LIMITS, '--memory', '512m', '--cpus', '1', *user]
 
-    install = [docker, 'run', '--rm', '--name', install_name, *common, config.node_image, 'npm', 'install',
-               '--save-exact', '--ignore-scripts', '--no-audit', '--no-fund', f'{candidate.package}@{candidate.target}']
+    if method == 'direct':
+        arguments = ['--save-exact', '--ignore-scripts', '--no-audit', '--no-fund', f'{candidate.package}@{candidate.target}']
+    else:
+        # Транзитивная зависимость: пишем overrides в package.json, затем npm пересобирает lock-файл.
+        try:
+            (work / 'package.json').write_text(_with_override(before['package.json'], candidate.package, candidate.target))
+        except ValueError as exc:
+            _stop(INCONCLUSIVE, f'Не удалось добавить overrides: {exc}. Нужен ручной разбор.', 'install')
+        arguments = ['--ignore-scripts', '--no-audit', '--no-fund']
+    install = [docker, 'run', '--rm', '--name', install_name, *common, config.node_image, 'npm', 'install', *arguments]
     result = _step('install', install, config.install_timeout, logs, steps)
     if result.code != 0:
         _fail(result, 'install', 'установка обновлённой версии')
@@ -269,6 +311,9 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
     diff = _diff(before, after)
     if after == before:
         _stop(INCONCLUSIVE, 'Установка не изменила package.json и package-lock.json: обновление не применилось.', 'install')
+    if after['package-lock.json'] == before['package-lock.json']:
+        _stop(INCONCLUSIVE, 'После установки package-lock.json не изменился: npm не применил обновление. '
+                            'Нужен ручной разбор.', 'install', diff=diff)
 
     # Тесты запускаются без сети: проект, как и его зависимости, не может ничего отправить наружу.
     test = [docker, 'run', '--rm', '--name', test_name, '--network', 'none', *common, config.node_image, 'npm', 'test']

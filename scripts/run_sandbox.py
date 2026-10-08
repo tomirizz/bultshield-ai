@@ -31,6 +31,9 @@ def main():
     result = verify_fix(Path(args.project).expanduser(), candidate, baseline)
     print(f'ИТОГ: {result.outcome}')
     print(result.reason)
+    methods = {'direct': 'npm install пакет@версия (прямая зависимость)',
+               'override': 'поле overrides в package.json (транзитивная зависимость)'}
+    print('Способ обновления: ' + methods.get(result.method, 'не определён'))
     print('\nШаги:')
     for step in result.steps:
         print(f"  {step['name']:<8} {step['status']:<8} {step['seconds']:>6} c")
