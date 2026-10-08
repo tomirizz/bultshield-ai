@@ -7,6 +7,7 @@ from urllib.parse import unquote
 
 import pytest
 from app import github_pr
+from app.fix_agent import FIX_PASSED
 from app.github_pr import (
     API,
     BaseMovedError,
@@ -326,9 +327,10 @@ def test_pr_body_neutralizes_markup_in_data():
 
 
 def agent_result(outcome='FIX_VERIFIED', files=True):
-    item = SimpleNamespace(package='qs', installed='6.5.5', target='6.16.0', reason='r',
+    item = SimpleNamespace(package='qs', installed='6.5.5', target='6.16.0', reason='r', status=FIX_PASSED,
                            plan={'resolves': ['CVE-1', 'CVE-2']})
-    other = SimpleNamespace(package='request', installed='2.88.2', target=None, reason='исправления нет', plan={})
+    other = SimpleNamespace(package='request', installed='2.88.2', target=None, reason='исправления нет',
+                            status='manual_intervention', plan={})
     raw = SimpleNamespace(files=dict(FIXED) if files else {}, original=dict(ORIGINAL))
     candidates = [{'package': 'qs', 'target': '6.16.0', 'method': 'override'}]
     combined = {'outcome': outcome, 'packages': ['qs'], 'candidates': candidates,
@@ -341,7 +343,7 @@ def test_fix_set_is_built_from_a_verified_agent_result():
     assert fix.packages == [{'package': 'qs', 'from': '6.5.5', 'to': '6.16.0', 'method': 'override',
                              'resolves': ['CVE-1', 'CVE-2']}]
     assert fix.files == FIXED and fix.original == ORIGINAL
-    assert fix.manual == [{'package': 'request', 'reason': 'исправления нет'}]
+    assert fix.manual == [{'package': 'request', 'reason': 'исправления нет', 'detail': ''}]
 
 
 @pytest.mark.parametrize('result', [agent_result('BREAKS_APP'), agent_result(files=False),
@@ -349,3 +351,33 @@ def test_fix_set_is_built_from_a_verified_agent_result():
 def test_unverified_results_cannot_become_a_pr(result):
     with pytest.raises(GitHubError, match='совместную проверку'):
         fix_set_from_agent(result)
+
+
+def test_manual_entries_explain_why_each_package_is_left_out():
+    broken = SimpleNamespace(
+        package='uuid', installed='3.4.0', target='11.1.1', status='manual_intervention', plan={},
+        reason='обновление ломает приложение: шаг тесты упал',
+        verification={'failed_step': 'tests', 'steps': [
+            {'name': 'install', 'log_tail': 'Error: не тот шаг'},
+            {'name': 'tests', 'log_tail': 'ok\nError [ERR_PACKAGE_PATH_NOT_EXPORTED]: Package subpath \'./v4\' is not defined\nat x'}]})
+    review = SimpleNamespace(package='tough-cookie', installed='2.5.0', target='4.1.3', status=FIX_PASSED, plan={},
+                             reason='Тесты, сборка и запуск прошли', verification=None)
+    result = agent_result()
+    result.packages += [broken, review]
+    manual = {m['package']: m for m in fix_set_from_agent(result).manual}
+    assert 'ERR_PACKAGE_PATH_NOT_EXPORTED' in manual['uuid']['detail'] and 'не тот шаг' not in manual['uuid']['detail']
+    assert 'просмотра человеком' in manual['tough-cookie']['reason'] and '2.5.0 -> 4.1.3' in manual['tough-cookie']['reason']
+    body = build_pr_body(fix_set(manual=list(manual.values())))
+    assert 'ошибка: Error ERR_PACKAGE_PATH_NOT_EXPORTED' in body and 'не включено' in body
+
+
+def test_pr_body_shows_commit_and_readable_database_date():
+    body = build_pr_body(fix_set(db_updated_at='2026-10-07T07:38:55.515026687Z'), SHA)
+    assert f'`{SHA[:12]}`' in body and 'база CVE от 2026-10-07 07:38 UTC' in body and '515026687' not in body
+    assert 'overrides' in body and 'вложенной' in body
+    assert SHA[:12] not in build_pr_body(fix_set())
+
+
+def test_created_pr_body_contains_the_verified_commit(hub, client):
+    make(client)
+    assert SHA[:12] in hub.calls('POST', '/pulls')[0]['body']['body']

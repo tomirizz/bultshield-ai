@@ -43,12 +43,12 @@ def main():
     for name in sorted(fix.files):
         print(f'  {name}: {len(fix.original[name])} -> {len(fix.files[name])} байт')
     if args.dry_run:
-        print('\n--- Текст PR ---\n' + build_pr_body(fix))
+        print('\n--- Текст PR ---\n' + build_pr_body(fix, args.base_sha))
         print('Dry-run: ничего не отправлено.')
         return
     if not args.repo or not args.base_sha:
         sys.exit('Для настоящего PR нужны --repo и --base-sha.')
-    print('\n--- Текст PR ---\n' + build_pr_body(fix))
+    print('\n--- Текст PR ---\n' + build_pr_body(fix, args.base_sha))
     if input(f'Создать PR в {args.repo}? Для подтверждения введите имя репозитория: ').strip() != args.repo:
         sys.exit('Не подтверждено, PR не создан.')
     try:

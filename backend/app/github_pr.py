@@ -17,6 +17,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
+from .fix_agent import FIX_PASSED
 from .scanner_catalog import TRIVY_VERSION
 
 API = 'https://api.github.com'
@@ -125,8 +126,32 @@ def fix_set_from_agent(result):
     methods = {c['package']: c['method'] for c in combined.get('candidates', [])}
     packages = [{'package': name, 'from': item.installed, 'to': item.target, 'method': methods.get(name, ''),
                  'resolves': list(item.plan.get('resolves', []))} for name, item in chosen.items()]
-    manual = [{'package': i.package, 'reason': i.reason} for i in result.packages if i.package not in chosen]
+    manual = [_manual_entry(i) for i in result.packages if i.package not in chosen]
     return FixSet(packages, dict(raw.files), dict(raw.original), manual, combined.get('scan_db_updated_at'))
+
+
+def _error_line(verification):
+    """Первая строка с ошибкой из лога шага, на котором остановилась проверка (для объяснения человеку)."""
+    step = (verification or {}).get('failed_step')
+    for entry in (verification or {}).get('steps', []):
+        if entry.get('name') == step:
+            for row in entry.get('log_tail', '').splitlines():
+                if re.search(r'Error|ERR_|ERROR|not ok', row):
+                    return row.strip()
+    return ''
+
+
+def _manual_entry(item):
+    if item.status == FIX_PASSED:
+        reason = (f'обновление {item.installed} -> {item.target} прошло проверку, но требует просмотра человеком '
+                  '(меняет мажорную версию или закрывает не всё); в этот PR не включено')
+        return {'package': item.package, 'reason': reason}
+    return {'package': item.package, 'reason': item.reason, 'detail': _error_line(getattr(item, 'verification', None))}
+
+
+def _date(text):
+    match = re.match(r'(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})', str(text))
+    return f'{match.group(1)} {match.group(2)} UTC' if match else _md(text, 40)
 
 
 def _md(text, limit=300):
@@ -135,25 +160,31 @@ def _md(text, limit=300):
     return _SAFE_TEXT.sub('', text)[:limit]
 
 
-def build_pr_body(fix):
+def build_pr_body(fix, base_sha=None):
     rows = ['| Пакет | Было | Стало | Способ | Закрывает |', '|---|---|---|---|---|']
     for item in fix.packages:
         how = {'direct': 'прямая зависимость', 'override': 'overrides (вложенная)'}.get(item['method'], item['method'])
         rows.append(f"| `{_md(item['package'])}` | {_md(item['from'])} | {_md(item['to'])} | {_md(how)} | "
                     f"{_md(', '.join(item['resolves']) or '-', 400)} |")
     lines = ['## Обновление уязвимых зависимостей', '', *rows, '',
+             '`overrides` - поле в package.json, которое заставляет npm использовать указанную версию вложенной '
+             'зависимости (той, что подтянул другой пакет).', '',
              '### Как проверено',
              f'Все обновления проверены **вместе** в изолированной песочнице (Docker): установка с `--ignore-scripts`, '
              f'тесты без сети, сборка образа, запуск без сети и проверка `/health`, затем повторный скан Trivy {TRIVY_VERSION}'
-             f'{" (база CVE от " + _md(fix.db_updated_at) + ")" if fix.db_updated_at else ""}. '
-             'Целевые находки исчезли, новых находок приложения не появилось.', '',
+             f'{" (база CVE от " + _date(fix.db_updated_at) + ")" if fix.db_updated_at else ""}. '
+             'Целевые находки исчезли, новых находок приложения не появилось.',
+             *([f'Проверка выполнена для коммита `{base_sha[:12]}`.'] if base_sha else []), '',
              '### Что важно знать',
              '- Проверка выполнена на копии проекта. Образ не публиковался: пока образ не пересобран, опубликован и '
              'повторно просканирован, **работающее приложение не исправлено**.',
              '- Тесты проекта могут быть неполными: зелёные тесты не доказывают совместимость во всех сценариях.']
     if fix.manual:
         lines += ['', '### Не вошло в этот PR (нужен ручной разбор)']
-        lines += [f"- `{_md(m['package'])}`: {_md(m['reason'])}" for m in fix.manual]
+        for m in fix.manual:
+            lines.append(f"- `{_md(m['package'])}`: {_md(m['reason'])}")
+            if m.get('detail'):
+                lines.append(f"  - ошибка: {_md(m['detail'], 200)}")
     lines += ['', '---', 'Сформировано автоматически (BultShield). Слияние выполняет человек.']
     return '\n'.join(lines) + '\n'
 
@@ -222,7 +253,7 @@ def create_fix_pr(client, repo, *, base_branch, base_sha, fix, confirmed, projec
 
     pr = client.request('POST', f'/repos/{repo}/pulls', {
         'title': f'Обновить уязвимые зависимости: {names}'[:200], 'head': branch, 'base': base_branch,
-        'body': build_pr_body(fix), 'draft': bool(draft), 'maintainer_can_modify': False})
+        'body': build_pr_body(fix, base_sha), 'draft': bool(draft), 'maintainer_can_modify': False})
     return {'created': True, 'number': pr.get('number'), 'url': _html_url(pr), 'branch': branch, 'commit': commit}
 
 
