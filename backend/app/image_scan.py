@@ -78,6 +78,21 @@ def allowed_registries():
     return {item.strip().lower() for item in os.environ.get('IMAGE_ALLOWED_REGISTRIES', '').split(',') if item.strip()}
 
 
+def max_db_age_hours():
+    """Предельный возраст базы CVE в часах (IMAGE_DB_MAX_AGE_HOURS, по умолчанию 48).
+
+    Базу публикуют примерно раз в сутки, поэтому жёсткие 24 часа нарушаются каждый раз, когда
+    новая сборка выходит с задержкой. Дата сборки базы всегда попадает в результат проверки.
+    """
+    try:
+        value = int(os.environ.get('IMAGE_DB_MAX_AGE_HOURS', '48'))
+    except ValueError:
+        value = 0
+    if not 1 <= value <= 168:
+        raise ImageScanError('IMAGE_DB_MAX_AGE_HOURS должен быть целым числом от 1 до 168.')
+    return value
+
+
 def parse_reference(text, allowed=None):
     """Строгий разбор ссылки на образ. Реестр и тег (или digest) обязательны."""
     if not isinstance(text, str) or not 3 <= len(text) <= 255:
@@ -140,15 +155,13 @@ def _run(command, cwd, environment, log, report=None, timeout=300, check_log=Tru
         raise ImageScanError('Trivy сообщил о неполной проверке. Проверьте доступность образа и базы CVE.')
 
 
-def run_image_scan(reference, *, platform=None):
-    ref = parse_reference(reference)
-    platform = platform or os.environ.get('IMAGE_SCAN_PLATFORM') or DEFAULT_PLATFORM
-    if not _PLATFORM.fullmatch(platform):
-        raise ImageScanError('Некорректная платформа образа.')
+def _scan(source_flags, target, *, platform_flags=(), list_packages=False):
+    """Общая часть: свежая база CVE, затем `trivy image` с заданным источником. Возвращает (отчёт, дата базы)."""
     executable = shutil.which('trivy')
     if not executable:
         raise ImageScanError('Trivy не установлен в worker.')
     timeout = timeout_seconds('TRIVY_TIMEOUT_SECONDS', 600)
+    max_age = max_db_age_hours()
     cache = Path.home() / '.cache' / 'bultshield-trivy'
     try:
         cache.mkdir(parents=True, exist_ok=True)
@@ -170,20 +183,52 @@ def run_image_scan(reference, *, platform=None):
                  timeout=max(0, deadline - time.monotonic()), check_log=False)
             metadata = json.loads((cache / 'db' / 'metadata.json').read_text())
             updated = datetime.fromisoformat(metadata['UpdatedAt'].replace('Z', '+00:00'))
-            if updated.tzinfo is None or not timedelta(0) <= datetime.now(timezone.utc) - updated <= timedelta(hours=24):
+            if updated.tzinfo is None or not timedelta(0) <= datetime.now(timezone.utc) - updated <= timedelta(hours=max_age):
                 raise ImageScanError('База CVE Trivy устарела или имеет некорректную дату.')
-            command = [executable, 'image', *flags, '--image-src', 'remote', '--platform', platform,
+            command = [executable, 'image', *flags, *source_flags, *platform_flags,
+                       *(['--list-all-pkgs'] if list_packages else []),
                        '--scanners', 'vuln', '--skip-db-update', '--skip-java-db-update', '--skip-check-update',
                        '--skip-vex-repo-update', '--ignorefile', str(ignore), '--format', 'json',
-                       '--output', str(report), ref.text]
+                       '--output', str(report), *target]
             _run(command, workspace, environment, workspace / 'image.log', report,
                  timeout=max(0, deadline - time.monotonic()))
             if not report.is_file() or report.stat().st_size > MAX_REPORT:
                 raise ImageScanError('JSON Trivy отсутствует или превышает 20 МБ.')
-            parsed = parse_image_report(json.loads(report.read_text()))
-            digest = resolve_digest(ref, parsed.summary['repo_digests'])
-            return ImageScanResult(ref.text, digest, platform, metadata['UpdatedAt'], parsed)
+            parsed = parse_image_report(json.loads(report.read_text()), collect_packages=list_packages)
+            return parsed, metadata['UpdatedAt']
     except ImageReportError as exc:
         raise ImageScanError(str(exc)) from None
     except (OSError, UnicodeError, ValueError, KeyError, TypeError):
         raise ImageScanError('Не удалось прочитать файлы, базу CVE или отчёт Trivy.') from None
+
+
+def run_image_scan(reference, *, platform=None):
+    ref = parse_reference(reference)
+    platform = platform or os.environ.get('IMAGE_SCAN_PLATFORM') or DEFAULT_PLATFORM
+    if not _PLATFORM.fullmatch(platform):
+        raise ImageScanError('Некорректная платформа образа.')
+    parsed, updated = _scan(['--image-src', 'remote'], [ref.text], platform_flags=['--platform', platform])
+    digest = resolve_digest(ref, parsed.summary['repo_digests'])
+    return ImageScanResult(ref.text, digest, platform, updated, parsed)
+
+
+MAX_ARCHIVE = 2 * 1024 ** 3
+
+
+@dataclass(frozen=True)
+class ArchiveScanResult:
+    """Результат сканирования локального образа из `docker save`. У такого образа нет digest реестра."""
+    archive: str
+    db_updated_at: str
+    report: ImageReport
+
+
+def run_archive_scan(archive):
+    """Скан образа из tar-архива (`docker save`). Образ не запускается и не загружается в реестр."""
+    path = Path(archive) if isinstance(archive, (str, os.PathLike)) else None
+    if path is None or not path.is_absolute() or path.suffix != '.tar' or not path.is_file():
+        raise ImageScanError('Архив образа не найден или имеет неподдерживаемый вид.')
+    if not 0 < path.stat().st_size <= MAX_ARCHIVE:
+        raise ImageScanError('Архив образа пуст или превышает лимит 2 ГБ.')
+    parsed, updated = _scan([], ['--input', str(path)], list_packages=True)
+    return ArchiveScanResult(str(path), updated, parsed)

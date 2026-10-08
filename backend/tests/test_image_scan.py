@@ -157,7 +157,7 @@ def test_nonzero_exit_is_an_error(sandbox):
 
 
 def test_stale_database_stops_before_scanning(sandbox):
-    bin_dir = sandbox(age_hours=48)
+    bin_dir = sandbox(age_hours=72)
     with pytest.raises(ImageScanError, match='устарела'):
         run_image_scan(LOCAL)
     assert (bin_dir / 'calls.txt').read_text().split() == ['fs']
@@ -195,3 +195,90 @@ def test_missing_trivy_and_bad_platform(sandbox, monkeypatch):
     monkeypatch.setattr(image_scan.shutil, 'which', lambda name: None)
     with pytest.raises(ImageScanError, match='не установлен'):
         run_image_scan(LOCAL)
+
+
+# --- скан локального образа из tar-архива (используется песочницей) ---
+
+def archive_file(tmp_path, size=16):
+    path = tmp_path / 'candidate.tar'
+    path.write_bytes(b'x' * size)
+    return path
+
+
+def test_archive_scan_reads_tar_and_collects_packages(sandbox, tmp_path):
+    data = report()
+    for result in data['Results']:
+        if result['Class'] == 'lang-pkgs':
+            result['Packages'] = [{'Name': 'lodash', 'Version': '4.18.1', 'FilePath': 'app/node_modules/lodash/package.json'},
+                                  {'Name': 'npm', 'Version': '11.0.0', 'FilePath': 'usr/local/lib/node_modules/npm/package.json'},
+                                  {'Name': 7}]
+    bin_dir = sandbox(data=data)
+    path = archive_file(tmp_path)
+    result = image_scan.run_archive_scan(path)
+    args = (bin_dir / 'args-image.txt').read_text()
+    assert f'--input {path}' in args and '--list-all-pkgs' in args and '--skip-db-update' in args
+    assert '--image-src' not in args and '--platform' not in args
+    assert result.archive == str(path)
+    assert result.report.summary['packages'] == [
+        {'name': 'lodash', 'version': '4.18.1', 'path': 'app/node_modules/lodash/package.json', 'origin': 'app'},
+        {'name': 'npm', 'version': '11.0.0', 'path': 'usr/local/lib/node_modules/npm/package.json', 'origin': 'base-tooling'}]
+
+
+def test_registry_scan_does_not_collect_packages(sandbox):
+    bin_dir = sandbox()
+    result = run_image_scan(LOCAL)
+    assert 'packages' not in result.report.summary
+    assert '--list-all-pkgs' not in (bin_dir / 'args-image.txt').read_text()
+
+
+@pytest.mark.parametrize('make', [
+    lambda tmp: tmp / 'missing.tar',
+    lambda tmp: Path('relative.tar'),
+    lambda tmp: archive_file(tmp, 0),
+    lambda tmp: tmp,
+    lambda tmp: 42,
+])
+def test_archive_scan_rejects_bad_archive(sandbox, tmp_path, make):
+    with pytest.raises(ImageScanError):
+        image_scan.run_archive_scan(make(tmp_path))
+
+
+def test_archive_scan_rejects_wrong_suffix(sandbox, tmp_path):
+    path = tmp_path / 'image.zip'
+    path.write_bytes(b'x')
+    with pytest.raises(ImageScanError):
+        image_scan.run_archive_scan(path)
+
+
+def test_archive_scan_fails_when_trivy_warns(sandbox, tmp_path):
+    sandbox(mode='warn')
+    with pytest.raises(ImageScanError, match='неполной'):
+        image_scan.run_archive_scan(archive_file(tmp_path))
+
+
+def test_archive_scan_fails_on_stale_database(sandbox, tmp_path):
+    sandbox(age_hours=72)
+    with pytest.raises(ImageScanError, match='устарела'):
+        image_scan.run_archive_scan(archive_file(tmp_path))
+
+
+def test_database_slightly_older_than_a_day_is_still_accepted(sandbox, tmp_path):
+    # Реальный случай: база собрана 24 ч 2 мин назад, новая сборка ещё не опубликована.
+    sandbox(age_hours=24.04)
+    assert image_scan.run_archive_scan(archive_file(tmp_path)).db_updated_at
+
+
+def test_database_age_limit_is_configurable(sandbox, tmp_path, monkeypatch):
+    sandbox(age_hours=30)
+    monkeypatch.setenv('IMAGE_DB_MAX_AGE_HOURS', '24')
+    with pytest.raises(ImageScanError, match='устарела'):
+        image_scan.run_archive_scan(archive_file(tmp_path))
+    monkeypatch.setenv('IMAGE_DB_MAX_AGE_HOURS', '36')
+    assert image_scan.run_archive_scan(archive_file(tmp_path))
+
+
+@pytest.mark.parametrize('value', ['0', '169', 'abc', '-5', ''])
+def test_invalid_database_age_limit_is_an_error(sandbox, tmp_path, monkeypatch, value):
+    monkeypatch.setenv('IMAGE_DB_MAX_AGE_HOURS', value)
+    with pytest.raises(ImageScanError, match='IMAGE_DB_MAX_AGE_HOURS'):
+        image_scan.run_archive_scan(archive_file(tmp_path))

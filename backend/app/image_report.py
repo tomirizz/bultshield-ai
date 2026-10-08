@@ -63,7 +63,7 @@ def manual_reason(origin, fixed, status):
     return 'пакет вне приложения и известных инструментов образа'
 
 
-def parse_image_report(data, app_prefixes=APP_PREFIXES):
+def parse_image_report(data, app_prefixes=APP_PREFIXES, collect_packages=False):
     if not isinstance(data, dict) or data.get('SchemaVersion') != 2 or data.get('ArtifactType') != 'container_image':
         raise ImageReportError('Неподдерживаемая схема JSON Trivy для образа.')
     if not isinstance(data.get('Trivy'), dict) or data['Trivy'].get('Version') != TRIVY_VERSION:
@@ -72,12 +72,19 @@ def parse_image_report(data, app_prefixes=APP_PREFIXES):
     if not isinstance(results, list) or not results:
         # Пустой список не доказывает, что образ чист: возможно, Trivy ничего не распознал.
         raise ImageReportError('Trivy не вернул ни одной проверенной цели. Результат не определён.')
-    findings, targets = [], []
+    findings, targets, packages = [], [], []
     for result in results:
         if not isinstance(result, dict) or result.get('Class') not in CLASSES:
             raise ImageReportError('Trivy вернул неподдерживаемый тип результата.')
         targets.append(_text(result.get('Target'), 2048))
         ecosystem = _text(result.get('Type'), 100)
+        if collect_packages and result['Class'] == 'lang-pkgs':
+            # Список всех пакетов нужен, чтобы отличить «чисто» от «Trivy не увидел приложение».
+            for pkg in result.get('Packages') or []:
+                if isinstance(pkg, dict) and isinstance(pkg.get('Name'), str) and isinstance(pkg.get('Version'), str):
+                    where = pkg.get('FilePath') if isinstance(pkg.get('FilePath'), str) else ''
+                    packages.append({'name': pkg['Name'], 'version': pkg['Version'], 'path': where,
+                                     'origin': classify('lang-pkgs', where, app_prefixes)})
         items = result.get('Vulnerabilities')
         if items is None:
             items = []
@@ -114,4 +121,6 @@ def parse_image_report(data, app_prefixes=APP_PREFIXES):
                'fixable_app': sum(1 for f in findings if f['origin'] == 'app' and f['manual_reason'] is None),
                'image_id': image_id if isinstance(image_id, str) else None,
                'repo_digests': [d for d in digests if isinstance(d, str)] if isinstance(digests, list) else []}
+    if collect_packages:
+        summary['packages'] = packages
     return ImageReport(findings, summary)
