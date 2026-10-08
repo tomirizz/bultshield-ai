@@ -200,6 +200,32 @@ class Fix(Record, Base):
     timeline: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
 
 
+class DependencyFixRun(Record, Base):
+    """Запуск агента исправлений зависимостей для одной проверки образа.
+
+    Хранит результат проверки обновлений в песочнице, версию кода и digest образа, к которым он относится,
+    и данные созданного PR. Это результат проверки в копии проекта, а не состояние работающего приложения.
+    """
+    __tablename__ = "dependency_fix_runs"
+    __table_args__ = (
+        sa.ForeignKeyConstraint(["project_id", "scan_id"], ["scans.project_id", "scans.id"], ondelete="CASCADE"),
+        sa.CheckConstraint("status IN ('RUNNING','COMPLETED','FAILED')", name="status_values"),
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    scan_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    image_digest: Mapped[str | None] = mapped_column(sa.String(128))
+    commit_sha: Mapped[str | None] = mapped_column(sa.String(64))
+    status: Mapped[str] = mapped_column(sa.String(16), default="RUNNING", server_default="RUNNING")
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    summary: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=sa.text("'{}'::jsonb"))
+    items: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
+    other: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
+    combined: Mapped[dict | None] = mapped_column(JSONB)
+    pull_request: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
+
+
 class Rescan(Record, Base):
     __tablename__ = "rescans"
     __table_args__ = (

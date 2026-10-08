@@ -2,7 +2,22 @@
 from sqlalchemy import event, select
 from sqlalchemy.orm import with_loader_criteria
 
-from .models import AgentRun, AIAnalysis, AuditEvent, CorrelationRun, Finding, Fix, Project, Repository, Rescan, Scan, ScanJob, SecurityIssueGroup, WebTarget
+from .models import (
+    AgentRun,
+    AIAnalysis,
+    AuditEvent,
+    CorrelationRun,
+    DependencyFixRun,
+    Finding,
+    Fix,
+    Project,
+    Repository,
+    Rescan,
+    Scan,
+    ScanJob,
+    SecurityIssueGroup,
+    WebTarget,
+)
 
 
 def isolate(session, owner_id):
@@ -13,7 +28,7 @@ def isolate(session, owner_id):
     scans = select(Scan.__table__.c.id).where(Scan.__table__.c.project_id.in_(projects))
     runs = select(CorrelationRun.__table__.c.id).where(CorrelationRun.__table__.c.project_id.in_(projects))
     filters = [(Project, Project.owner_id == owner_id), (AuditEvent, AuditEvent.user_id == owner_id)]
-    filters += [(model, model.project_id.in_(projects)) for model in (Repository, Scan, Finding, Rescan, CorrelationRun, WebTarget, AgentRun)]
+    filters += [(model, model.project_id.in_(projects)) for model in (Repository, Scan, Finding, Rescan, CorrelationRun, WebTarget, AgentRun, DependencyFixRun)]
     filters += [(model, model.finding_id.in_(findings)) for model in (AIAnalysis, Fix)]
     filters += [(ScanJob, ScanJob.scan_id.in_(scans)), (SecurityIssueGroup, SecurityIssueGroup.run_id.in_(runs))]
 

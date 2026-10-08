@@ -5,6 +5,7 @@
 """
 from sqlalchemy import select
 
+from .fix_runs import effective_status, latest_runs, now
 from .fix_service import supported
 from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, ScanStatus
 
@@ -27,8 +28,32 @@ LIMITATIONS = (
 )
 
 
-def finding_state(finding, fix=None):
-    """Статус находки по ТЗ и причина ручного разбора (или None)."""
+def agent_state(entry):
+    """Статус находки по результату агента исправлений зависимостей и причина (или None).
+
+    «Прошло проверку» означает только проверку в песочнице. Всё неясное или неизвестное даёт ручной разбор,
+    а не «исправлено».
+    """
+    if entry.get('phase') == 'running':
+        return 'VERIFYING', 'Идёт проверка обновления в песочнице.'
+    item, combined = entry['item'], entry.get('combined')
+    status = item.get('status')
+    if status == 'fix_passed_verification':
+        if item.get('needs_review'):
+            return 'MANUAL_REVIEW', item.get('reason') or 'обновление требует просмотра человеком'
+        if item.get('package') in ((combined or {}).get('packages') or []) and combined.get('outcome') == 'FIX_VERIFIED':
+            return 'FIX_VERIFIED', None
+        why = (combined or {}).get('reason') or 'совместная проверка набора обновлений не выполнялась'
+        return 'FIX_PROPOSED', f'Обновление прошло проверку отдельно, но набор обновлений вместе не прошёл проверку: {why}'
+    if status == 'fix_proposed':
+        return 'FIX_PROPOSED', item.get('reason') or 'проверка исправления не завершена'
+    if status == 'manual_intervention':
+        return 'MANUAL_REVIEW', item.get('reason') or 'нужно ручное вмешательство'
+    return 'MANUAL_REVIEW', 'результат агента исправлений не распознан'
+
+
+def finding_state(finding, fix=None, agent=None):
+    """Статус находки по ТЗ и причина (или None). Причина ручного разбора или пояснение к статусу."""
     extra = finding.extra or {}
     if finding.status == FindingStatus.STILL_DETECTED:
         return 'MANUAL_REVIEW', 'после применения исправления находка осталась'
@@ -40,6 +65,8 @@ def finding_state(finding, fix=None):
         return 'VERIFYING', None
     if finding.status == FindingStatus.FIX_PROPOSED:
         return 'FIX_PROPOSED', None
+    if agent is not None:
+        return agent_state(agent)
     if extra.get('manual_reason'):
         return 'MANUAL_REVIEW', extra['manual_reason']
     if not supported(finding):
@@ -60,8 +87,18 @@ def verdict(scan, total):
     return 'NO_FINDINGS', 'Сканеры не нашли проблем в проверенной области. Это не гарантия безопасности.'
 
 
-def action(finding, state, reason):
+def action(finding, state, reason, agent=None, pull_request=None):
     extra = finding.extra or {}
+    if agent is not None and agent.get('phase') != 'running':
+        if state == 'FIX_VERIFIED' and pull_request:
+            return {'action': 'review_pull_request', 'detail': (
+                f"PR создан: {pull_request['url']}. Слияние выполняет человек. После слияния образ нужно пересобрать, "
+                'опубликовать и просканировать повторно: до этого работающее приложение не исправлено.')}
+        if state == 'FIX_VERIFIED':
+            return {'action': 'create_pull_request', 'detail': (
+                'После подтверждения человеком создать PR с обновлением. Проверка проходила только в изолированной копии.')}
+        if state == 'FIX_PROPOSED':
+            return {'action': 'rerun_verification', 'detail': reason}
     if state == 'MANUAL_REVIEW':
         return {'action': 'manual_review', 'detail': reason}
     if state == 'FOUND':
@@ -84,10 +121,65 @@ def fix_summary(fix):
             'diff': fix.diff, 'timeline': fix.timeline or []}
 
 
-def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0):
-    """findings уже отсортированы. fixes и analyses: словари finding_id -> последняя запись."""
+def agent_summary(entry, run):
+    """Описание исправления от агента для отчёта. Это проверка в изолированной копии, не состояние приложения."""
+    if entry.get('phase') == 'running':
+        return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': 'verifying', 'scope': 'isolated_copy',
+                'applied_to_running_app': False}
+    item = entry['item']
+    verification = item.get('verification') or {}
+    return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': item.get('status'), 'scope': 'isolated_copy',
+            'applied_to_running_app': False, 'package': item.get('package'), 'installed_version': item.get('installed'),
+            'target_version': item.get('target'), 'major_change': item.get('major_change'),
+            'needs_review': item.get('needs_review'), 'reason': item.get('reason'), 'outcome': verification.get('outcome'),
+            'method': verification.get('method'), 'diff': verification.get('diff'), 'verification': verification}
+
+
+def run_summary(run, current):
+    """Сводка запуска агента для отчёта: что проверялось, на каком коде и образе, чем закончилось."""
+    if run is None:
+        return None
+    combined = run.combined or None
+    return {'id': str(run.id), 'status': effective_status(run, current), 'scope': 'isolated_copy', 'applied_to_running_app': False,
+            'commit_sha': run.commit_sha, 'image_digest': run.image_digest, 'summary': run.summary or {},
+            'combined': ({key: combined.get(key) for key in ('packages', 'outcome', 'reason', 'scan_db_updated_at')}
+                         if combined else None),
+            'pull_request': run.pull_request, 'error_message': run.error_message,
+            'started_at': run.started_at.isoformat() if run.started_at else None,
+            'completed_at': run.completed_at.isoformat() if run.completed_at else None}
+
+
+def agent_entries(scan, findings, fix_runs, current):
+    """finding.id -> результат агента для этой находки. Запуск по другому образу не учитывается."""
+    runs = fix_runs or {}
+    latest, completed = runs.get('latest'), runs.get('completed')
+    digest = ((scan.scanner_results or {}).get('trivy') or {}).get('digest')
+    entries = {}
+    if latest is not None and effective_status(latest, current) == 'RUNNING':
+        for finding in findings:
+            extra = finding.extra or {}
+            if extra.get('origin') == 'app' and not extra.get('manual_reason'):
+                entries[finding.id] = {'phase': 'running', 'run': latest}
+        return entries
+    if completed is None or (completed.image_digest and digest and completed.image_digest != digest):
+        return entries
+    by_id = {fid: item for item in completed.items or [] for fid in item.get('finding_ids') or []}
+    for finding in findings:
+        item = by_id.get(str(finding.id))
+        if item is not None:
+            entries[finding.id] = {'item': item, 'combined': completed.combined, 'run': completed}
+    return entries
+
+
+def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None):
+    """findings уже отсортированы. fixes и analyses: словари finding_id -> последняя запись.
+
+    fix_runs: {'latest': запуск агента, 'completed': последний завершённый запуск} или None.
+    """
     fixes, analyses = fixes or {}, analyses or {}
-    states = [finding_state(f, fixes.get(f.id)) for f in findings]
+    current = current or now()
+    agents = agent_entries(scan, findings, fix_runs, current)
+    states = [finding_state(f, fixes.get(f.id), agents.get(f.id)) for f in findings]
     by_status, by_severity, by_origin = {}, {}, {}
     for finding, (state, _) in zip(findings, states, strict=True):
         by_status[state] = by_status.get(state, 0) + 1
@@ -102,16 +194,18 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0)
     for finding, (state, reason) in page:
         extra = finding.extra or {}
         fix = fixes.get(finding.id)
+        entry = agents.get(finding.id)
         items.append({
             'id': str(finding.id), 'title': finding.title, 'rule_id': finding.rule_id, 'cve': finding.cve,
             'severity': finding.severity.value, 'risk_score': finding.risk_score, 'priority': finding.priority,
             'component': extra.get('package') or finding.file, 'file': finding.file,
             'installed_version': extra.get('installed_version'), 'fixed_version': extra.get('fixed_version'),
             'scanner': finding.scanner.value, 'category': finding.category.value, 'source': extra.get('source') or 'repository',
-            'origin': extra.get('origin'), 'status': state, 'status_text': STATUS_TEXT[state], 'manual_reason': reason,
-            'fix': fix_summary(fix) if fix is not None else None,
+            'origin': extra.get('origin'), 'status': state, 'status_text': STATUS_TEXT[state], 'status_reason': reason,
+            'manual_reason': reason if state == 'MANUAL_REVIEW' else None,
+            'fix': fix_summary(fix) if fix is not None else (agent_summary(entry, entry['run']) if entry is not None else None),
         })
-        proposal = action(finding, state, reason)
+        proposal = action(finding, state, reason, entry, (entry['run'].pull_request if entry is not None else None))
         if proposal:
             actions.append({'finding_id': str(finding.id), **proposal})
         analysis = analyses.get(finding.id)
@@ -134,6 +228,7 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0)
         'facts': {'scanners': results, 'total_findings': len(findings), 'by_severity': by_severity,
                   'by_origin': by_origin, 'by_status': by_status},
         'findings': {'items': items, 'limit': limit, 'offset': offset, 'total': len(findings)},
+        'fix_run': run_summary((fix_runs or {}).get('latest'), current),
         'assumptions': assumptions,
         'proposed_actions': actions,
         'limitations': list(LIMITATIONS),
@@ -151,4 +246,4 @@ def load_report(db, scan, limit=100, offset=0):
         for item in db.scalars(select(AIAnalysis).where(AIAnalysis.finding_id.in_(ids), AIAnalysis.status == 'COMPLETED')
                                .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())):
             analyses.setdefault(item.finding_id, item)
-    return build_report(scan, findings, fixes, analyses, limit, offset)
+    return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id))
