@@ -207,7 +207,8 @@ def run_image_scan(reference, *, platform=None):
     platform = platform or os.environ.get('IMAGE_SCAN_PLATFORM') or DEFAULT_PLATFORM
     if not _PLATFORM.fullmatch(platform):
         raise ImageScanError('Некорректная платформа образа.')
-    parsed, updated = _scan(['--image-src', 'remote'], [ref.text], platform_flags=['--platform', platform])
+    # Список пакетов нужен, чтобы после исправления отличить «находка исчезла» от «Trivy не увидел приложение».
+    parsed, updated = _scan(['--image-src', 'remote'], [ref.text], platform_flags=['--platform', platform], list_packages=True)
     digest = resolve_digest(ref, parsed.summary['repo_digests'])
     return ImageScanResult(ref.text, digest, platform, updated, parsed)
 

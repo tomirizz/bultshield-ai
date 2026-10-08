@@ -5,6 +5,7 @@
 """
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from .scanner_catalog import TRIVY_VERSION
 
@@ -23,6 +24,32 @@ OS_REASONS = {
 
 class ImageReportError(RuntimeError):
     """Отчёт нельзя использовать. Результат проверки не определён."""
+
+
+REVISION_LABEL = 'org.opencontainers.image.revision'
+
+
+def parse_time(value):
+    """Время в формате RFC 3339 -> datetime с часовым поясом (UTC, если пояс не указан). Иначе None."""
+    if not isinstance(value, str) or not 10 <= len(value) <= 40:
+        return None
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
+def image_facts(metadata):
+    """Время сборки образа и коммит из метки OCI, если они есть и имеют верный вид. Иначе None: догадок нет."""
+    config = metadata.get('ImageConfig') if isinstance(metadata, dict) else None
+    config = config if isinstance(config, dict) else {}
+    created = config.get('created')
+    created = created if parse_time(created) is not None else None
+    labels = (config.get('config') or {}).get('Labels') if isinstance(config.get('config'), dict) else None
+    revision = labels.get(REVISION_LABEL) if isinstance(labels, dict) else None
+    revision = revision if isinstance(revision, str) and re.fullmatch(r'[0-9a-f]{40}', revision) else None
+    return created, revision
 
 
 @dataclass(frozen=True)
@@ -116,10 +143,12 @@ def parse_image_report(data, app_prefixes=APP_PREFIXES, collect_packages=False):
         by_origin[finding['origin']] = by_origin.get(finding['origin'], 0) + 1
     metadata = data.get('Metadata') or {}
     image_id = metadata.get('ImageID')
+    created, revision = image_facts(metadata)
     digests = metadata.get('RepoDigests')
     summary = {'scanned_targets': targets, 'by_origin': by_origin, 'total': len(findings),
                'fixable_app': sum(1 for f in findings if f['origin'] == 'app' and f['manual_reason'] is None),
                'image_id': image_id if isinstance(image_id, str) else None,
+               'image_created': created, 'image_revision': revision,
                'repo_digests': [d for d in digests if isinstance(d, str)] if isinstance(digests, list) else []}
     if collect_packages:
         summary['packages'] = packages

@@ -102,7 +102,7 @@ def test_image_report_sections_and_counts():
     kinds = sorted(a['action'] for a in report['proposed_actions'])
     assert kinds == ['manual_review'] * 7 + ['update_dependency'] * 7
     assert report['assumptions'] == []
-    assert any('не реализована' in text for text in report['limitations'])
+    assert any('слит' in text and 'повторный скан' in text for text in report['limitations'])
     assert 'FIX_DEPLOYED' not in report['facts']['by_status']
 
 

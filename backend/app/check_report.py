@@ -20,22 +20,15 @@ STATUS_TEXT = {
 RUNNING = (ScanStatus.QUEUED, ScanStatus.CLONING, ScanStatus.SCANNING, ScanStatus.ANALYSING,
            ScanStatus.NORMALIZING, ScanStatus.AI_ANALYSIS)
 LIMITATIONS = (
-    'Исправления проверяются только в изолированной копии. Статус «применено к приложению» означает, что '
-    'исправление слито, образ пересобран, и повторный скан опубликованного образа больше не видит находку. '
-    'Эта часть пока не реализована, поэтому такой статус сейчас не присваивается.',
+    'Исправления проверяются только в изолированной копии. Статус «применено к приложению» ставится, только если PR слит, '
+    'образ собран после слияния и повторный скан нового образа больше не видит находку, а пакет в нём виден. '
+    'Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.',
     'Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.',
     'Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.',
 )
 
 
-def agent_state(entry):
-    """Статус находки по результату агента исправлений зависимостей и причина (или None).
-
-    «Прошло проверку» означает только проверку в песочнице. Всё неясное или неизвестное даёт ручной разбор,
-    а не «исправлено».
-    """
-    if entry.get('phase') == 'running':
-        return 'VERIFYING', 'Идёт проверка обновления в песочнице.'
+def _verification_state(entry):
     item, combined = entry['item'], entry.get('combined')
     status = item.get('status')
     if status == 'fix_passed_verification':
@@ -50,6 +43,29 @@ def agent_state(entry):
     if status == 'manual_intervention':
         return 'MANUAL_REVIEW', item.get('reason') or 'нужно ручное вмешательство'
     return 'MANUAL_REVIEW', 'результат агента исправлений не распознан'
+
+
+def agent_state(entry):
+    """Статус находки по результату агента исправлений зависимостей и причина (или None).
+
+    «Прошло проверку» означает только проверку в песочнице. «Применено» требует доказательств (fix_deployment):
+    слитый PR, новый образ, собранный после слияния, и повторный скан, в котором находки нет, а пакет виден.
+    Всё неясное или неизвестное даёт ручной разбор, а не «исправлено».
+    """
+    if entry.get('phase') == 'running':
+        return 'VERIFYING', 'Идёт проверка обновления в песочнице.'
+    state, reason = _verification_state(entry)
+    proof, info = entry.get('deployment'), entry.get('deployment_info') or {}
+    if proof and state == 'FIX_VERIFIED':
+        if proof.get('state') == 'gone' and info.get('status') == 'CONFIRMED':
+            pull = info.get('pull_request') or {}
+            return 'FIX_DEPLOYED', (f"PR №{pull.get('number')} слит, образ {info.get('image_digest')} собран после слияния и просканирован "
+                                    'повторно: находка не обнаруживается, пакет в образе виден. Проверен опубликованный образ.')
+        if proof.get('state') == 'still_detected':
+            return 'MANUAL_REVIEW', 'После слияния PR и пересборки образа находка осталась.'
+        if proof.get('state') == 'not_seen':
+            return state, 'Применение не подтверждено: пакет не виден в отчёте повторной проверки образа.'
+    return state, reason
 
 
 def finding_state(finding, fix=None, agent=None):
@@ -122,17 +138,21 @@ def fix_summary(fix):
 
 
 def agent_summary(entry, run):
-    """Описание исправления от агента для отчёта. Это проверка в изолированной копии, не состояние приложения."""
+    """Описание исправления от агента для отчёта. applied_to_running_app истинно только при подтверждённом применении."""
     if entry.get('phase') == 'running':
         return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': 'verifying', 'scope': 'isolated_copy',
                 'applied_to_running_app': False}
     item = entry['item']
     verification = item.get('verification') or {}
-    return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': item.get('status'), 'scope': 'isolated_copy',
-            'applied_to_running_app': False, 'package': item.get('package'), 'installed_version': item.get('installed'),
+    proof = entry.get('deployment')
+    applied = bool(proof and proof.get('state') == 'gone' and (entry.get('deployment_info') or {}).get('status') == 'CONFIRMED')
+    return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': item.get('status'),
+            'scope': 'published_image' if applied else 'isolated_copy', 'applied_to_running_app': applied,
+            'package': item.get('package'), 'installed_version': item.get('installed'),
             'target_version': item.get('target'), 'major_change': item.get('major_change'),
             'needs_review': item.get('needs_review'), 'reason': item.get('reason'), 'outcome': verification.get('outcome'),
-            'method': verification.get('method'), 'diff': verification.get('diff'), 'verification': verification}
+            'method': verification.get('method'), 'diff': verification.get('diff'), 'verification': verification,
+            'deployment': proof}
 
 
 def run_summary(run, current):
@@ -149,25 +169,45 @@ def run_summary(run, current):
             'completed_at': run.completed_at.isoformat() if run.completed_at else None}
 
 
+def deployment_summary(run):
+    """Итог последней проверки применения: что подтверждено и чего не хватает."""
+    if run is None or not run.deployment:
+        return None
+    data = run.deployment
+    return {'run_id': str(run.id), 'status': data.get('status'), 'scope': 'published_image', 'checked_at': data.get('checked_at'),
+            'rescan_id': data.get('rescan_id'), 'image_digest': data.get('image_digest'),
+            'base_image_digest': data.get('base_image_digest'), 'image_created': data.get('image_created'),
+            'pull_request': data.get('pull_request'), 'reasons': data.get('reasons') or [], 'counts': data.get('counts') or {},
+            'last_attempt': data.get('last_attempt')}
+
+
 def agent_entries(scan, findings, fix_runs, current):
     """finding.id -> результат агента для этой находки. Запуск по другому образу не учитывается."""
     runs = fix_runs or {}
-    latest, completed = runs.get('latest'), runs.get('completed')
+    latest, completed, evaluated = runs.get('latest'), runs.get('completed'), runs.get('evaluated')
     digest = ((scan.scanner_results or {}).get('trivy') or {}).get('digest')
+
+    def usable(run):
+        return run is not None and not (run.image_digest and digest and run.image_digest != digest)
+
+    def items_by_finding(run):
+        return {fid: item for item in (run.items if usable(run) else []) or [] for fid in item.get('finding_ids') or []}
+
+    proofs = ((evaluated.deployment or {}).get('findings') or {}) if usable(evaluated) else {}
+    evaluated_items = items_by_finding(evaluated)
+    completed_items = items_by_finding(completed)
+    running = latest is not None and effective_status(latest, current) == 'RUNNING'
     entries = {}
-    if latest is not None and effective_status(latest, current) == 'RUNNING':
-        for finding in findings:
-            extra = finding.extra or {}
+    for finding in findings:
+        key, extra = str(finding.id), finding.extra or {}
+        if key in proofs and key in evaluated_items:
+            entries[finding.id] = {'item': evaluated_items[key], 'combined': evaluated.combined, 'run': evaluated,
+                                   'deployment': proofs[key], 'deployment_info': evaluated.deployment}
+        elif running:
             if extra.get('origin') == 'app' and not extra.get('manual_reason'):
                 entries[finding.id] = {'phase': 'running', 'run': latest}
-        return entries
-    if completed is None or (completed.image_digest and digest and completed.image_digest != digest):
-        return entries
-    by_id = {fid: item for item in completed.items or [] for fid in item.get('finding_ids') or []}
-    for finding in findings:
-        item = by_id.get(str(finding.id))
-        if item is not None:
-            entries[finding.id] = {'item': item, 'combined': completed.combined, 'run': completed}
+        elif key in completed_items:
+            entries[finding.id] = {'item': completed_items[key], 'combined': completed.combined, 'run': completed}
     return entries
 
 
@@ -229,6 +269,7 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0,
                   'by_origin': by_origin, 'by_status': by_status},
         'findings': {'items': items, 'limit': limit, 'offset': offset, 'total': len(findings)},
         'fix_run': run_summary((fix_runs or {}).get('latest'), current),
+        'deployment': deployment_summary((fix_runs or {}).get('evaluated')),
         'assumptions': assumptions,
         'proposed_actions': actions,
         'limitations': list(LIMITATIONS),

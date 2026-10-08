@@ -275,3 +275,24 @@ def _html_url(pr):
     if not isinstance(url, str) or not url.startswith('https://github.com/'):
         raise GitHubError('GitHub вернул неожиданный адрес PR.')
     return url
+
+
+def fetch_pull_request(client, repo, number, *, allowed=None):
+    """Состояние PR на GitHub: слит ли он, когда и каким коммитом. Только чтение, ничего не меняет."""
+    if not isinstance(repo, str) or not _REPO.fullmatch(repo):
+        raise GitHubError('Некорректное имя репозитория (нужно владелец/имя).')
+    if repo.lower() not in (allowed_repos() if allowed is None else {a.lower() for a in allowed}):
+        raise GitHubError('Репозиторий не входит в список разрешённых (настройка FIX_PR_ALLOWED_REPOS).')
+    if not isinstance(number, int) or isinstance(number, bool) or number < 1:
+        raise GitHubError('Некорректный номер PR.')
+    pr = client.request('GET', f'/repos/{repo}/pulls/{number}')
+    if not isinstance(pr, dict) or pr.get('number') != number:
+        raise GitHubError('GitHub вернул не тот PR, который запрашивали.')
+    base, head = pr.get('base') or {}, pr.get('head') or {}
+    merged = pr.get('merged') is True
+    merge_sha, merged_at = pr.get('merge_commit_sha'), pr.get('merged_at')
+    if merged and (not isinstance(merge_sha, str) or not _SHA.fullmatch(merge_sha) or not isinstance(merged_at, str)):
+        raise GitHubError('GitHub сообщил о слиянии без коммита или времени слияния: считать PR слитым нельзя.')
+    return {'number': number, 'state': pr.get('state'), 'merged': merged, 'merged_at': merged_at if merged else None,
+            'merge_commit_sha': merge_sha if merged else None, 'head_ref': head.get('ref'), 'base_ref': base.get('ref'),
+            'url': _html_url(pr)}

@@ -224,11 +224,11 @@ def test_archive_scan_reads_tar_and_collects_packages(sandbox, tmp_path):
         {'name': 'npm', 'version': '11.0.0', 'path': 'usr/local/lib/node_modules/npm/package.json', 'origin': 'base-tooling'}]
 
 
-def test_registry_scan_does_not_collect_packages(sandbox):
+def test_registry_scan_collects_packages_to_tell_clean_from_unseen(sandbox):
     bin_dir = sandbox()
     result = run_image_scan(LOCAL)
-    assert 'packages' not in result.report.summary
-    assert '--list-all-pkgs' not in (bin_dir / 'args-image.txt').read_text()
+    assert 'packages' in result.report.summary
+    assert '--list-all-pkgs' in (bin_dir / 'args-image.txt').read_text()
 
 
 @pytest.mark.parametrize('make', [

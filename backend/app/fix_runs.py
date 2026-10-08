@@ -22,7 +22,7 @@ MAX_DIFF = 100_000
 MAX_LOG = 4_000
 MAX_MESSAGE = 300
 COMMIT = re.compile(r'[0-9a-f]{40}')
-PR_URL = re.compile(r'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/\d+')
+PR_URL = re.compile(r'https://github\.com/(?P<repo>[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100})/pull/(?P<number>[1-9]\d{0,8})')
 
 
 class FixRunError(RuntimeError):
@@ -153,9 +153,10 @@ def fail_run(db, run_id, message):
     return run
 
 
-def run_agent_for_scan(db, scan_id, project_dir, *, commit_sha=None, agent=run_fix_agent, **agent_kwargs):
-    """Полный запуск: создать запись, проверить обновления в песочнице, сохранить итог.
+def execute_run(db, scan_id, project_dir, *, commit_sha=None, agent=run_fix_agent, **agent_kwargs):
+    """Полный запуск: создать запись, проверить обновления в песочнице, сохранить итог. Возвращает (запуск, результат агента).
 
+    Результат агента (с файлами для PR) остаётся только в памяти этого процесса: в БД файлы не пишутся.
     Всё, что не удалось, остаётся FAILED с понятной причиной. Находки при этом сохраняют статус «обнаружена».
     """
     if commit_sha is None:
@@ -165,7 +166,7 @@ def run_agent_for_scan(db, scan_id, project_dir, *, commit_sha=None, agent=run_f
     try:
         rows = db.scalars(select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.id)).all()
         result = agent(Path(project_dir), findings_for_agent(rows), **agent_kwargs)
-        return complete_run(db, run_id, result, rows)
+        return complete_run(db, run_id, result, rows), result
     except FixRunError as exc:
         db.rollback()
         fail_run(db, run_id, str(exc))
@@ -177,23 +178,31 @@ def run_agent_for_scan(db, scan_id, project_dir, *, commit_sha=None, agent=run_f
         raise FixRunError('Агент исправлений завершился с ошибкой. Проверка обновлений не выполнена.') from None
 
 
+def run_agent_for_scan(db, scan_id, project_dir, **kwargs):
+    return execute_run(db, scan_id, project_dir, **kwargs)[0]
+
+
 def record_pull_request(db, run_id, *, url, branch, base_sha, created):
-    """Сохраняет данные PR, созданного по результатам этого запуска. Слияние выполняет человек и здесь не отражается."""
-    if not isinstance(url, str) or not PR_URL.fullmatch(url):
+    """Сохраняет данные PR, созданного по результатам этого запуска. Слияние здесь не отражается: его проверяет confirm_deployment."""
+    match = PR_URL.fullmatch(url) if isinstance(url, str) else None
+    if match is None:
         raise FixRunError('Некорректная ссылка на PR.')
     run = db.scalar(select(DependencyFixRun).where(DependencyFixRun.id == run_id).with_for_update())
     if run is None or run.status != 'COMPLETED':
         raise FixRunError('PR можно привязать только к завершённому запуску.')
-    run.pull_request = {'url': url, 'branch': branch, 'base_sha': base_sha, 'created': bool(created), 'recorded_at': now().isoformat(),
-                        'merged': False}
+    run.pull_request = {'url': url, 'repo': match['repo'], 'number': int(match['number']), 'branch': branch, 'base_sha': base_sha,
+                        'created': bool(created), 'recorded_at': now().isoformat(), 'merged': False}
+    run.deployment = None   # результат прежней проверки относился к другому PR
     db.commit()
     return run
 
 
 def latest_runs(db, scan_id):
-    """Последний запуск и последний завершённый запуск этой проверки (могут совпадать или быть None)."""
+    """Последний запуск, последний завершённый и последний, для которого проверялось применение (могут совпадать или быть None)."""
     ordering = (DependencyFixRun.created_at.desc(), DependencyFixRun.id.desc())
     latest = db.scalar(select(DependencyFixRun).where(DependencyFixRun.scan_id == scan_id).order_by(*ordering).limit(1))
     completed = db.scalar(select(DependencyFixRun).where(DependencyFixRun.scan_id == scan_id, DependencyFixRun.status == 'COMPLETED')
                           .order_by(*ordering).limit(1))
-    return {'latest': latest, 'completed': completed}
+    evaluated = db.scalar(select(DependencyFixRun).where(DependencyFixRun.scan_id == scan_id, DependencyFixRun.deployment.is_not(None))
+                          .order_by(*ordering).limit(1))
+    return {'latest': latest, 'completed': completed, 'evaluated': evaluated}

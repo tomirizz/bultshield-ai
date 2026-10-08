@@ -107,3 +107,27 @@ def test_unsupported_result_class_is_rejected(report):
     report['Results'][0]['Class'] = 'secret'
     with pytest.raises(ImageReportError):
         parse_image_report(report)
+
+
+def test_image_creation_time_and_revision_label_are_read_when_valid(report):
+    report['Metadata']['ImageConfig'] = {'created': '2026-10-08T10:00:00.123456789Z',
+                                         'config': {'Labels': {'org.opencontainers.image.revision': 'a' * 40}}}
+    summary = parse_image_report(report).summary
+    assert summary['image_created'] == '2026-10-08T10:00:00.123456789Z' and summary['image_revision'] == 'a' * 40
+
+
+@pytest.mark.parametrize('config', [
+    None, 'text', {}, {'created': 'вчера'}, {'created': 123}, {'created': ''}, {'config': 'x'}, {'config': {'Labels': 'x'}},
+    {'config': {'Labels': {'org.opencontainers.image.revision': 'main'}}},
+    {'config': {'Labels': {'org.opencontainers.image.revision': 'A' * 40}}},
+    {'config': {'Labels': {'org.opencontainers.image.revision': 5}}},
+])
+def test_missing_or_odd_image_facts_stay_empty_instead_of_guessed(report, config):
+    report['Metadata']['ImageConfig'] = config
+    summary = parse_image_report(report).summary
+    assert summary['image_created'] is None and summary['image_revision'] is None
+
+
+def test_report_without_image_config_has_no_creation_time(report):
+    summary = parse_image_report(report).summary
+    assert summary['image_created'] is None and summary['image_revision'] is None

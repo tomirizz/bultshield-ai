@@ -11,6 +11,7 @@ from .models import Category, Finding, FindingStatus, Scanner, ScanStatus, Sever
 from .scan_engine import log_event
 from .scanner_catalog import TRIVY_VERSION
 
+MAX_APP_PACKAGES = 3000
 APP_DESCRIPTION = ('Известная уязвимость в зависимости приложения внутри Docker-образа. '
                    'Обновление пакета нужно проверить в изолированной среде.')
 
@@ -59,6 +60,10 @@ def run_image_pipeline(data, progress, store):
             scan_id=data.scan_id, image=result.reference, digest=result.digest)
         summary = {**result.summary, 'status': 'COMPLETED', 'version': TRIVY_VERSION, 'source_redacted': True,
                    'finding_count': len(findings)}
+        # В БД остаются только пакеты приложения (остальные не нужны). Обрезанный список помечается явно:
+        # по неполному списку нельзя утверждать, что пакета в образе нет.
+        packages = [{key: p[key] for key in ('name', 'version', 'path')} for p in summary.pop('packages', []) if p['origin'] == 'app']
+        summary.update(app_packages=packages[:MAX_APP_PACKAGES], app_packages_truncated=len(packages) > MAX_APP_PACKAGES)
     except ImageScanError as exc:
         summary = {'status': 'FAILED', 'error': str(exc), 'error_code': 'SCANNER_FAILED'}
     summary['duration_seconds'] = round(time.monotonic() - began, 3)

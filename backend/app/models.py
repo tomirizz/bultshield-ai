@@ -223,6 +223,7 @@ class DependencyFixRun(Record, Base):
     other: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
     combined: Mapped[dict | None] = mapped_column(JSONB)
     pull_request: Mapped[dict | None] = mapped_column(JSONB)
+    deployment: Mapped[dict | None] = mapped_column(JSONB)
     error_message: Mapped[str | None] = mapped_column(sa.Text)
 
 
