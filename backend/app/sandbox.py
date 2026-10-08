@@ -274,14 +274,14 @@ def _step(name, command, timeout, logs, steps):
     return result
 
 
-def _fail(result, step, what, uses_network=True):
+def _fail(result, step, what, uses_network=True, note=''):
     """Сбой шага: таймаут и проблемы сети — неопределённо, остальное — обновление ломает приложение."""
     if result.code is None:
         _stop(INCONCLUSIVE, f'Шаг «{what}» превысил лимит времени: причина неизвестна, нужна ручная проверка.', step)
     if uses_network and _NETWORK_TROUBLE.search(result.tail):
         _stop(INCONCLUSIVE, f'Шаг «{what}» не удался из-за сети или Docker: это не вина обновления. '
                             f'Повторите проверку.', step)
-    _stop(BREAKS_APP, f'Шаг «{what}» завершился с ошибкой после обновления (код {result.code}).', step)
+    _stop(BREAKS_APP, f'Шаг «{what}» завершился с ошибкой после обновления (код {result.code}).{note}', step)
 
 
 def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted, baseline, before, config, scan, steps,
@@ -319,7 +319,8 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
     test = [docker, 'run', '--rm', '--name', test_name, '--network', 'none', *common, config.node_image, 'npm', 'test']
     result = _step('tests', test, config.test_timeout, logs, steps)
     if result.code != 0:
-        _fail_with_diff(result, 'tests', 'тесты (без сети; до обновления они не запускались)', diff, uses_network=False)
+        _fail_with_diff(result, 'tests', 'тесты', diff, uses_network=False,
+                        note=' Тесты шли без сети и до обновления не запускались: причина может быть и в самих тестах.')
 
     build = [docker, 'build', '--platform', config.platform, '-q', '-t', tag, str(work)]
     result = _step('build', build, config.build_timeout, logs, steps)
@@ -371,9 +372,9 @@ def _pipeline(docker, work, logs, archive, tag, containers, candidate, targeted,
                         'Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.', None, **extra)
 
 
-def _fail_with_diff(result, step, what, diff, uses_network=True):
+def _fail_with_diff(result, step, what, diff, uses_network=True, note=''):
     try:
-        _fail(result, step, what, uses_network)
+        _fail(result, step, what, uses_network, note)
     except _Stop as stop:
         stop.result.diff = diff
         raise
