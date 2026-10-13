@@ -1,0 +1,404 @@
+[
+  {
+    "kind": "image",
+    "id": "a82398c4-cf8f-47b0-97d5-58da7e61054e",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "COMPLETED",
+    "current_step": "completed",
+    "error_code": null,
+    "commit_sha": null,
+    "created_at": "2026-10-13T19:13:18.425738Z",
+    "started_at": "2026-10-13T19:13:24.928530Z",
+    "completed_at": "2026-10-13T19:13:32.735533Z",
+    "error_message": null,
+    "scanner_config": {
+      "image": {
+        "reference": "docker.io/library/node:22.14.0-alpine",
+        "repository": "docker.io/library/node"
+      },
+      "scope": "registry_image",
+      "watch": true,
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "trivy"
+      ],
+      "trivy_version": "0.74.0"
+    },
+    "scanner_results": {
+      "trivy": {
+        "image": "docker.io/library/node:22.14.0-alpine",
+        "scope": "registry_image",
+        "total": 158,
+        "digest": "sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944",
+        "status": "COMPLETED",
+        "version": "0.74.0",
+        "image_id": "sha256:33544e83793ca080b49f5a30fb7dbe8a678765973de6ea301572a0ef53e76333",
+        "platform": "linux/amd64",
+        "by_origin": {
+          "os": 97,
+          "base-tooling": 61
+        },
+        "fixable_app": 0,
+        "app_packages": [],
+        "repo_digests": [
+          "node@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944"
+        ],
+        "db_updated_at": "2026-10-13T13:06:33.602531196Z",
+        "finding_count": 158,
+        "image_created": "2025-02-13T05:05:05Z",
+        "trivy_version": "0.74.0",
+        "image_revision": null,
+        "scanned_targets": [
+          "docker.io/library/node:22.14.0-alpine (alpine 3.21.3)",
+          "Node.js"
+        ],
+        "source_redacted": true,
+        "duration_seconds": 7.727,
+        "app_packages_truncated": false
+      }
+    }
+  },
+  {
+    "kind": "image",
+    "id": "58926b46-9b82-4066-a0cb-725ad3c31e35",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "FAILED",
+    "current_step": "store",
+    "error_code": "SCANNER_FAILED",
+    "commit_sha": null,
+    "created_at": "2026-10-13T19:12:46.938686Z",
+    "started_at": "2026-10-13T19:12:48.187837Z",
+    "completed_at": "2026-10-13T19:12:49.023991Z",
+    "error_message": "Неполная проверка: trivy. Результаты успешных сканеров сохранены.",
+    "scanner_config": {
+      "image": {
+        "reference": "docker.io/library/node:bultshield-missing-20261014",
+        "repository": "docker.io/library/node"
+      },
+      "scope": "registry_image",
+      "watch": false,
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "trivy"
+      ],
+      "trivy_version": "0.74.0"
+    },
+    "scanner_results": {
+      "trivy": {
+        "error": "Trivy завершился с ошибкой (1); проверка неполная.",
+        "status": "FAILED",
+        "error_code": "SCANNER_FAILED",
+        "duration_seconds": 0.803
+      }
+    }
+  },
+  {
+    "kind": "image",
+    "id": "f9c8e359-ac11-474e-ada3-9dc774a67d70",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "FAILED",
+    "current_step": "store",
+    "error_code": "SCANNER_FAILED",
+    "commit_sha": null,
+    "created_at": "2026-10-13T19:12:42.466269Z",
+    "started_at": "2026-10-13T19:12:43.185058Z",
+    "completed_at": "2026-10-13T19:12:44.124133Z",
+    "error_message": "Неполная проверка: trivy. Результаты успешных сканеров сохранены.",
+    "scanner_config": {
+      "image": {
+        "reference": "docker.io/library/node:bultshield-missing-20261014",
+        "repository": "docker.io/library/node"
+      },
+      "scope": "registry_image",
+      "watch": false,
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "trivy"
+      ],
+      "trivy_version": "0.74.0"
+    },
+    "scanner_results": {
+      "trivy": {
+        "error": "Trivy завершился с ошибкой (1); проверка неполная.",
+        "status": "FAILED",
+        "error_code": "SCANNER_FAILED",
+        "duration_seconds": 0.903
+      }
+    }
+  },
+  {
+    "kind": "static",
+    "id": "0205fa20-771b-48d0-9796-723bb85c9861",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "COMPLETED",
+    "current_step": "completed",
+    "error_code": null,
+    "commit_sha": "cde718910cf0c6398c7c083b51851da00e8843fb",
+    "created_at": "2026-10-13T19:12:28.946987Z",
+    "started_at": "2026-10-13T19:12:30.453016Z",
+    "completed_at": "2026-10-13T19:12:40.811978Z",
+    "error_message": null,
+    "scanner_config": {
+      "scope": "branch_snapshot",
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "gitleaks",
+        "semgrep",
+        "trivy"
+      ],
+      "decode_depth": 0,
+      "trivy_checks": "embedded",
+      "archive_depth": 0,
+      "trivy_version": "0.74.0",
+      "max_file_bytes": 2097152,
+      "trivy_scanners": [
+        "vuln",
+        "misconfig"
+      ],
+      "max_total_bytes": 52428800,
+      "semgrep_version": "1.178.0",
+      "gitleaks_version": "8.30.1",
+      "requested_commit": "cde718910cf0c6398c7c083b51851da00e8843fb",
+      "semgrep_languages": [
+        "python",
+        "javascript",
+        "typescript"
+      ],
+      "semgrep_rule_count": 8,
+      "semgrep_rules_sha256": "8b5c9c1f4dd25291fefeff2a1ab9885306f331b989a7fec6836077959b46d36e",
+      "trivy_db_max_age_hours": 24
+    },
+    "scanner_results": {
+      "trivy": {
+        "scope": "supported_manifests_and_configurations",
+        "checks": "embedded",
+        "status": "COMPLETED",
+        "version": "0.74.0",
+        "input_files": 3,
+        "result_files": 2,
+        "covered_files": [
+          "Dockerfile",
+          "package-lock.json"
+        ],
+        "db_updated_at": "2026-10-13T13:06:33.602531196Z",
+        "finding_count": 4,
+        "source_redacted": true,
+        "duration_seconds": 7.916,
+        "raw_category_counts": {
+          "dependency": 3,
+          "configuration": 1
+        }
+      },
+      "semgrep": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "1.178.0",
+        "rules_sha256": "8b5c9c1f4dd25291fefeff2a1ab9885306f331b989a7fec6836077959b46d36e",
+        "finding_count": 0,
+        "scanned_files": 4,
+        "source_redacted": true,
+        "duration_seconds": 1.669
+      },
+      "gitleaks": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "8.30.1",
+        "finding_count": 0,
+        "source_redacted": true,
+        "duration_seconds": 0.065,
+        "secrets_redacted": true
+      }
+    }
+  },
+  {
+    "kind": "image",
+    "id": "2434bde5-4330-4281-8396-daf3fdde58a9",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "COMPLETED",
+    "current_step": "completed",
+    "error_code": null,
+    "commit_sha": null,
+    "created_at": "2026-10-13T19:07:13.816880Z",
+    "started_at": "2026-10-13T19:07:33.102465Z",
+    "completed_at": "2026-10-13T19:07:42.149772Z",
+    "error_message": null,
+    "scanner_config": {
+      "image": {
+        "reference": "docker.io/library/node:22.14.0-alpine",
+        "repository": "docker.io/library/node"
+      },
+      "scope": "registry_image",
+      "watch": true,
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "trivy"
+      ],
+      "trivy_version": "0.74.0"
+    },
+    "scanner_results": {
+      "trivy": {
+        "image": "docker.io/library/node:22.14.0-alpine",
+        "scope": "registry_image",
+        "total": 158,
+        "digest": "sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944",
+        "status": "COMPLETED",
+        "version": "0.74.0",
+        "image_id": "sha256:33544e83793ca080b49f5a30fb7dbe8a678765973de6ea301572a0ef53e76333",
+        "platform": "linux/amd64",
+        "by_origin": {
+          "os": 97,
+          "base-tooling": 61
+        },
+        "fixable_app": 0,
+        "app_packages": [],
+        "repo_digests": [
+          "node@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944"
+        ],
+        "db_updated_at": "2026-10-13T13:06:33.602531196Z",
+        "finding_count": 158,
+        "image_created": "2025-02-13T05:05:05Z",
+        "trivy_version": "0.74.0",
+        "image_revision": null,
+        "scanned_targets": [
+          "docker.io/library/node:22.14.0-alpine (alpine 3.21.3)",
+          "Node.js"
+        ],
+        "source_redacted": true,
+        "duration_seconds": 8.939,
+        "app_packages_truncated": false
+      }
+    }
+  },
+  {
+    "kind": "image",
+    "id": "b370a052-5e0e-497d-90cc-a89b01878cb0",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "FAILED",
+    "current_step": "store",
+    "error_code": "SCANNER_FAILED",
+    "commit_sha": null,
+    "created_at": "2026-10-13T18:58:19.399507Z",
+    "started_at": "2026-10-13T18:58:22.668544Z",
+    "completed_at": "2026-10-13T18:58:25.204943Z",
+    "error_message": "Неполная проверка: trivy. Результаты успешных сканеров сохранены.",
+    "scanner_config": {
+      "image": {
+        "reference": "docker.io/library/node:22.14.0-alpine",
+        "repository": "docker.io/library/node"
+      },
+      "scope": "registry_image",
+      "watch": true,
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "trivy"
+      ],
+      "trivy_version": "0.74.0"
+    },
+    "scanner_results": {
+      "trivy": {
+        "error": "Не удалось определить digest образа. Результат нельзя привязать к конкретной версии образа.",
+        "status": "FAILED",
+        "error_code": "SCANNER_FAILED",
+        "duration_seconds": 2.511
+      }
+    }
+  },
+  {
+    "kind": "static",
+    "id": "54f5de14-eb7b-4fa9-a75a-5cda16f416c2",
+    "project_id": "a86b3992-e01b-40dd-bf08-aae4cae6b606",
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "status": "COMPLETED",
+    "current_step": "completed",
+    "error_code": null,
+    "commit_sha": "cde718910cf0c6398c7c083b51851da00e8843fb",
+    "created_at": "2026-10-13T18:58:11.788242Z",
+    "started_at": "2026-10-13T18:58:12.101778Z",
+    "completed_at": "2026-10-13T18:58:22.653804Z",
+    "error_message": null,
+    "scanner_config": {
+      "scope": "branch_snapshot",
+      "branch": "main",
+      "trigger": "api",
+      "scanners": [
+        "gitleaks",
+        "semgrep",
+        "trivy"
+      ],
+      "decode_depth": 0,
+      "trivy_checks": "embedded",
+      "archive_depth": 0,
+      "trivy_version": "0.74.0",
+      "max_file_bytes": 2097152,
+      "trivy_scanners": [
+        "vuln",
+        "misconfig"
+      ],
+      "max_total_bytes": 52428800,
+      "semgrep_version": "1.178.0",
+      "gitleaks_version": "8.30.1",
+      "requested_commit": "cde718910cf0c6398c7c083b51851da00e8843fb",
+      "semgrep_languages": [
+        "python",
+        "javascript",
+        "typescript"
+      ],
+      "semgrep_rule_count": 8,
+      "semgrep_rules_sha256": "8b5c9c1f4dd25291fefeff2a1ab9885306f331b989a7fec6836077959b46d36e",
+      "trivy_db_max_age_hours": 24
+    },
+    "scanner_results": {
+      "trivy": {
+        "scope": "supported_manifests_and_configurations",
+        "checks": "embedded",
+        "status": "COMPLETED",
+        "version": "0.74.0",
+        "input_files": 3,
+        "result_files": 2,
+        "covered_files": [
+          "Dockerfile",
+          "package-lock.json"
+        ],
+        "db_updated_at": "2026-10-13T13:06:33.602531196Z",
+        "finding_count": 4,
+        "source_redacted": true,
+        "duration_seconds": 8.225,
+        "raw_category_counts": {
+          "dependency": 3,
+          "configuration": 1
+        }
+      },
+      "semgrep": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "1.178.0",
+        "rules_sha256": "8b5c9c1f4dd25291fefeff2a1ab9885306f331b989a7fec6836077959b46d36e",
+        "finding_count": 0,
+        "scanned_files": 4,
+        "source_redacted": true,
+        "duration_seconds": 1.569
+      },
+      "gitleaks": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "8.30.1",
+        "finding_count": 0,
+        "source_redacted": true,
+        "duration_seconds": 0.064,
+        "secrets_redacted": true
+      }
+    }
+  }
+]

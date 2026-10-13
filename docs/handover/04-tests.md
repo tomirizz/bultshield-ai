@@ -1,5 +1,9 @@
 # Проверки и доказательства
 
+Актуальный прогон после исправлений живого стенда: **836 passed, 4 skipped, 1 warning in 96.03s**. Лог: [backend-tests-live-release.txt](evidence/backend-tests-live-release.txt). Дополнительно 3 frontend-теста, TypeScript/Vite build и Ruff прошли; [CI ac769fc](https://github.com/tomirizz/bultshield-ai/actions/runs/38452715093) — success. Новые регрессии проверяют блокировку очереди/аудита, Docker Hub digest, транспорт Bult и ограничение ожидания интерфейса. Живые результаты Bult и непроверенные пункты — в [08](08-function1-live-acceptance.md).
+
+## Исторический локальный прогон до исправлений Bult
+
 Итог полного прогона на отдельной PostgreSQL `bultshield_handover_test`: **815 passed, 4 skipped, 1 warning in 90.57s (0:01:30)**. Собрано 819 тестов. Запуск: `python scripts/check_backend.py` с `TEST_DATABASE_URL`; одновременно работал только один процесс pytest. Лог: [evidence/backend-tests.txt](evidence/backend-tests.txt).
 
 Четыре пропуска: реальный Gitleaks, два теста реального Semgrep (включая цикл исправления), реальный Nuclei. Эти исполняемые файлы не установлены в локальном окружении. Реальный Trivy 0.74.0 доступен, его проверка выполнилась. Предупреждение Starlette о будущем изменении тестового HTTP-клиента не является падением; обновление зависимостей вне этой задачи не выполнялось.

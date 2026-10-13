@@ -1,0 +1,54 @@
+{
+  "job": {
+    "id": "b52bcfdc-b5fd-4ccf-b6d0-4130e7ac0eb8",
+    "check_id": "0205fa20-771b-48d0-9796-723bb85c9861",
+    "status": "COMPLETED",
+    "created_at": "2026-10-13T19:17:14.702489+00:00",
+    "started_at": "2026-10-13T19:17:16.528938+00:00",
+    "completed_at": "2026-10-13T19:17:16.535872+00:00",
+    "result": {
+      "model": "qwen2.5-1.5b-instruct",
+      "errors": [
+        "Лимит запросов на одну проверку (3): не пояснено групп находок: 1."
+      ],
+      "failed": 0,
+      "reused": 3,
+      "status": "PARTIAL",
+      "planned": 3,
+      "skipped": 1,
+      "cost_usd": 0.0,
+      "provider": "bult",
+      "completed": 0,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "error": null
+  },
+  "llm": {
+    "status": "PARTIAL",
+    "message": "Пояснено групп находок: 3; для остальных пояснения нет (причины ниже). Статусы и факты от этого не зависят.",
+    "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+    "explained": 3,
+    "failed": 0,
+    "provider": "bult",
+    "model": "qwen2.5-1.5b-instruct",
+    "input_tokens": 2654,
+    "output_tokens": 450,
+    "cost_usd": 0.0,
+    "failures": [
+      {
+        "subject": "*limit",
+        "status": "LIMIT_EXCEEDED",
+        "error_code": "limit",
+        "message": "Лимит запросов на одну проверку (3): не пояснено групп находок: 1."
+      }
+    ],
+    "job": {
+      "id": "b52bcfdc-b5fd-4ccf-b6d0-4130e7ac0eb8",
+      "status": "COMPLETED",
+      "created_at": "2026-10-13T19:17:14.702489+00:00",
+      "completed_at": "2026-10-13T19:17:16.535872+00:00",
+      "error": null
+    }
+  }
+}

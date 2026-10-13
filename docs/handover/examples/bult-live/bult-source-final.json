@@ -1,0 +1,264 @@
+{
+  "check": {
+    "id": "0205fa20-771b-48d0-9796-723bb85c9861",
+    "kind": "static",
+    "status": "COMPLETED",
+    "error_code": null,
+    "error_message": null,
+    "created_at": "2026-10-13T19:12:28.946987+00:00",
+    "completed_at": "2026-10-13T19:12:40.811978+00:00"
+  },
+  "subject": {
+    "repository_id": "33b525eb-07d5-4d2a-929c-68beb9772b29",
+    "commit_sha": "cde718910cf0c6398c7c083b51851da00e8843fb",
+    "requested_commit": "cde718910cf0c6398c7c083b51851da00e8843fb",
+    "trigger": "api",
+    "watched": false,
+    "image": null,
+    "image_digest": null
+  },
+  "verdict": {
+    "result": "FINDINGS",
+    "statement": "Сканеры нашли проблем: 4."
+  },
+  "facts": {
+    "scanners": {
+      "trivy": {
+        "scope": "supported_manifests_and_configurations",
+        "checks": "embedded",
+        "status": "COMPLETED",
+        "version": "0.74.0",
+        "input_files": 3,
+        "result_files": 2,
+        "covered_files": [
+          "Dockerfile",
+          "package-lock.json"
+        ],
+        "db_updated_at": "2026-10-13T13:06:33.602531196Z",
+        "finding_count": 4,
+        "source_redacted": true,
+        "duration_seconds": 7.916,
+        "raw_category_counts": {
+          "dependency": 3,
+          "configuration": 1
+        }
+      },
+      "semgrep": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "1.178.0",
+        "rules_sha256": "8b5c9c1f4dd25291fefeff2a1ab9885306f331b989a7fec6836077959b46d36e",
+        "finding_count": 0,
+        "scanned_files": 4,
+        "source_redacted": true,
+        "duration_seconds": 1.669
+      },
+      "gitleaks": {
+        "scope": "branch_snapshot",
+        "status": "COMPLETED",
+        "version": "8.30.1",
+        "finding_count": 0,
+        "source_redacted": true,
+        "duration_seconds": 0.065,
+        "secrets_redacted": true
+      }
+    },
+    "total_findings": 4,
+    "by_severity": {
+      "MEDIUM": 3,
+      "LOW": 1
+    },
+    "by_origin": {},
+    "by_status": {
+      "FOUND": 3,
+      "MANUAL_REVIEW": 1
+    }
+  },
+  "findings": {
+    "items": [
+      {
+        "id": "1bfd968e-6a61-4eb0-b2cc-d094781c65a0",
+        "title": "CVE-2023-26136: tough-cookie",
+        "rule_id": "CVE-2023-26136",
+        "cve": "CVE-2023-26136",
+        "severity": "MEDIUM",
+        "risk_score": 45,
+        "priority": "P2",
+        "component": "tough-cookie",
+        "file": "package-lock.json",
+        "installed_version": "2.5.0",
+        "fixed_version": "4.1.3",
+        "scanner": "trivy",
+        "category": "dependency",
+        "source": "repository",
+        "origin": null,
+        "status": "FOUND",
+        "status_text": "Проблема обнаружена",
+        "status_reason": null,
+        "manual_reason": null,
+        "fix": null
+      },
+      {
+        "id": "6f907f2d-3aab-4aef-a1d3-b9658652e262",
+        "title": "CVE-2026-41907: uuid",
+        "rule_id": "CVE-2026-41907",
+        "cve": "CVE-2026-41907",
+        "severity": "MEDIUM",
+        "risk_score": 41,
+        "priority": "P2",
+        "component": "uuid",
+        "file": "package-lock.json",
+        "installed_version": "3.4.0",
+        "fixed_version": "11.1.1, 12.0.1, 13.0.1",
+        "scanner": "trivy",
+        "category": "dependency",
+        "source": "repository",
+        "origin": null,
+        "status": "FOUND",
+        "status_text": "Проблема обнаружена",
+        "status_reason": null,
+        "manual_reason": null,
+        "fix": null
+      },
+      {
+        "id": "f599ff3c-c93d-4bd5-9637-4f6f61bb631b",
+        "title": "CVE-2023-28155: request",
+        "rule_id": "CVE-2023-28155",
+        "cve": "CVE-2023-28155",
+        "severity": "MEDIUM",
+        "risk_score": 39,
+        "priority": "P2",
+        "component": "request",
+        "file": "package-lock.json",
+        "installed_version": "2.88.2",
+        "fixed_version": null,
+        "scanner": "trivy",
+        "category": "dependency",
+        "source": "repository",
+        "origin": null,
+        "status": "MANUAL_REVIEW",
+        "status_text": "Требуется ручное вмешательство",
+        "status_reason": "исправленной версии нет",
+        "manual_reason": "исправленной версии нет",
+        "fix": null
+      },
+      {
+        "id": "a8a80ede-9706-4de3-8789-d095fb3e2f12",
+        "title": "Dockerfile: отсутствует HEALTHCHECK",
+        "rule_id": "DS-0026",
+        "cve": null,
+        "severity": "LOW",
+        "risk_score": 10,
+        "priority": "P4",
+        "component": "Dockerfile",
+        "file": "Dockerfile",
+        "installed_version": null,
+        "fixed_version": null,
+        "scanner": "trivy",
+        "category": "configuration",
+        "source": "repository",
+        "origin": null,
+        "status": "FOUND",
+        "status_text": "Проблема обнаружена",
+        "status_reason": null,
+        "manual_reason": null,
+        "fix": null
+      }
+    ],
+    "limit": 100,
+    "offset": 0,
+    "total": 4
+  },
+  "changes_since_previous": null,
+  "fix_run": null,
+  "deployment": null,
+  "assumptions": [
+    {
+      "finding_id": null,
+      "finding_ids": [
+        "f599ff3c-c93d-4bd5-9637-4f6f61bb631b"
+      ],
+      "source": "llm_explanation",
+      "subject": "package:request@2.88.2",
+      "model": "qwen2.5-1.5b-instruct",
+      "explanation": "Уязвимость в пакете запросов",
+      "risk": "При обновлении системы может быть потенциально опасна, если не исправлена",
+      "recommended_fix": "Сканер не указал исправленную версию. Нужен ручной разбор применимости уязвимости и вариантов замены или ограничения использования компонента. Автоматическое исправление не подготовлено.",
+      "call_id": "83f5ea58-01ab-4933-938a-b0953a830923"
+    },
+    {
+      "finding_id": null,
+      "finding_ids": [
+        "1bfd968e-6a61-4eb0-b2cc-d094781c65a0"
+      ],
+      "source": "llm_explanation",
+      "subject": "package:tough-cookie@2.5.0",
+      "model": "qwen2.5-1.5b-instruct",
+      "explanation": "Уязвимость в пакете трущая-коок",
+      "risk": "При использовании старой версии (2.5.0) пакета трущая-коок может быть уязвимым к атакам.",
+      "recommended_fix": "Обновите пакет трущая-коок до версии 4.1.3.",
+      "call_id": "38fc3ad1-ef5f-4245-b510-ec1f1fd2aff5"
+    }
+  ],
+  "llm": {
+    "status": "PARTIAL",
+    "message": "Пояснено групп находок: 2; для остальных пояснения нет (причины ниже). Статусы и факты от этого не зависят.",
+    "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+    "explained": 2,
+    "failed": 1,
+    "provider": "bult",
+    "model": "qwen2.5-1.5b-instruct",
+    "input_tokens": 1984,
+    "output_tokens": 306,
+    "cost_usd": 0.0,
+    "failures": [
+      {
+        "subject": "package:uuid@3.4.0",
+        "status": "INVALID_RESPONSE",
+        "error_code": "schema",
+        "message": "Ответ модели не соответствует формату (поля или длина)."
+      },
+      {
+        "subject": "*limit",
+        "status": "LIMIT_EXCEEDED",
+        "error_code": "limit",
+        "message": "Лимит запросов на одну проверку (3): не пояснено групп находок: 1."
+      }
+    ],
+    "job": {
+      "id": "41642574-771b-43c1-97c4-9235a381dfc9",
+      "status": "COMPLETED",
+      "created_at": "2026-10-13T19:13:04.115457+00:00",
+      "completed_at": "2026-10-13T19:13:24.921762+00:00",
+      "error": null
+    }
+  },
+  "proposed_actions": [
+    {
+      "finding_id": "1bfd968e-6a61-4eb0-b2cc-d094781c65a0",
+      "action": "generate_fix",
+      "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+    },
+    {
+      "finding_id": "6f907f2d-3aab-4aef-a1d3-b9658652e262",
+      "action": "generate_fix",
+      "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+    },
+    {
+      "finding_id": "f599ff3c-c93d-4bd5-9637-4f6f61bb631b",
+      "action": "manual_review",
+      "detail": "исправленной версии нет"
+    },
+    {
+      "finding_id": "a8a80ede-9706-4de3-8789-d095fb3e2f12",
+      "action": "generate_fix",
+      "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+    }
+  ],
+  "limitations": [
+    "Исправления проверяются в изолированной копии. Подтверждение исправления в опубликованном образе появляется, только если PR слит, образ собран после слияния и повторный скан нового образа больше не видит находку, а пакет в нём виден. Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.",
+    "Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.",
+    "Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.",
+    "Пояснения языковой модели — предположения: они не проверялись сканерами и не влияют на статусы."
+  ]
+}

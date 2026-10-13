@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Almaty",
+  "method": "Safari native UI observations and authenticated API page-source exports; terminal probes explicitly described in 08",
+  "runtime_commit": "ac769fc0bb28d9a30caf70e2b4388a4cad870207",
+  "app_build": {
+    "commit": "ac769fc",
+    "status": "Success",
+    "display_time": "10.14.2026, 00:10"
+  },
+  "worker_build": {
+    "commit": "ac769fc",
+    "status": "Success",
+    "display_time": "10.14.2026, 00:10"
+  },
+  "runtime_services_running": [
+    "bultshield-app",
+    "bultshield-worker",
+    "bultshield-postgres",
+    "bultshield-model"
+  ],
+  "schema": "0013",
+  "worker_probe": {
+    "docker": null,
+    "node": null,
+    "npm": null,
+    "trivy": "/usr/local/bin/trivy",
+    "docker_socket_present": false,
+    "bult_api_token_configured": false,
+    "ci_trigger_token_configured": false
+  },
+  "queue_duplicate_observations": {
+    "source_id": "0205fa20-771b-48d0-9796-723bb85c9861",
+    "image_id": "a82398c4-cf8f-47b0-97d5-58da7e61054e",
+    "same_id_returned_without_hang": true
+  },
+  "pagination_observed": [
+    50,
+    100,
+    150,
+    158,
+    150
+  ],
+  "unauthenticated_report_http_status": 401,
+  "schedule_probe": {
+    "threshold_seconds": 0,
+    "default_period_hours_unchanged": 24,
+    "check_id": "e7320c49-d4d2-46f6-bcb3-5af672ed482c",
+    "rescan_of": "a82398c4-cf8f-47b0-97d5-58da7e61054e",
+    "observed_real_24h_interval": false
+  },
+  "llm_network_probe": {
+    "endpoint_override_for_single_call": "http://127.0.0.1:1",
+    "provider_label": "bult-unavailable-probe",
+    "status": "UNAVAILABLE",
+    "error_code": "network",
+    "facts_hash_unchanged": true,
+    "global_configuration_changed": false
+  },
+  "old_assistant_root_recheck": {
+    "project_id": "816c22c1-8629-496f-9682-bd22d420d90c",
+    "allow_actions": false,
+    "tool": "top_issues",
+    "recommended_nonroot_user_and_USER": true,
+    "secret_question_covered": false,
+    "note": "Returned root guidance only; not full acceptance of answer quality."
+  },
+  "full_bult_function1_accepted": false,
+  "api_exports_sha256": {
+    "bult-health-ready.json": "ea3464f1a8c9f1fbde41d81fef5f81b5bd30d5ca32519e1a07cfe1614fb74199",
+    "bult-image-error.json": "709100af98f41479dcf0e60adfb77e71751aff5af2130aeb0e88a219585f1152",
+    "bult-image-final.json": "ba9256f870883b958d02ff1208de63cc11501c24aa1dae69cef47fb45a563d7d",
+    "bult-image-schedule.json": "dd3c49ff97c2d4ef5d19d100c006a5b002965eab086953977068949d06963126",
+    "bult-llm-cached.json": "f9014a18d6b4bea69713d71527928d52c28aa9d9f7aac319415ce7d5e44e0c5e",
+    "bult-llm-repeat.json": "c269690b7480ee2aa0f1867d39f1871dc32cf80da2784c71719bbfc889eb5db9",
+    "bult-llm-unavailable.json": "c2f29a743ac437e78d8ffac20a83b9e564387f4fafc1dbc3c829ae6ce59d6ade",
+    "bult-project-scans.json": "a5aa00374344fe4d29ef040cb3f098b57e47b9a6300ac9e59f92d3bfe8309b01",
+    "bult-source-final.json": "12ef876ac3198de7466ab34d3ba4f91032f007e1376f5f23bd65466828009c26",
+    "bult-source-retried.json": "c717c2aa7edb55d68821f6578ad27b97e641dfc2d98df15d3869beddd8b7a22e",
+    "unauthenticated-report.json": "5bcc4759b0856d7805e53cf77073fe93c180a44457d23bea4b5d395aeb11e5f4"
+  }
+}

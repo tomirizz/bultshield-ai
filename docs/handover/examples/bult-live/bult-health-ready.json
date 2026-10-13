@@ -1,0 +1,9 @@
+{
+  "status": "ready",
+  "database": "connected",
+  "schema_revision": "0013",
+  "environment": "production",
+  "stage": 20,
+  "scanners_enabled": true,
+  "ai_enabled": true
+}
