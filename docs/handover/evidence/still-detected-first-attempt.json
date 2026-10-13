@@ -1,0 +1,57 @@
+{
+  "outcome": "BREAKS_APP",
+  "reason": "Приложение не ответило на /health после обновления (или завершилось сразу после запуска).",
+  "failed_step": "health",
+  "steps": [
+    {
+      "name": "docker",
+      "status": "passed",
+      "seconds": 0.1,
+      "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: io.containerd.runc.v2 runc\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+    },
+    {
+      "name": "install",
+      "status": "passed",
+      "seconds": 2.2,
+      "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 48 packages in 2s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+    },
+    {
+      "name": "tests",
+      "status": "passed",
+      "seconds": 2.1,
+      "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (13.215792ms)\n✔ request library loads (265.463126ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1015.397251"
+    },
+    {
+      "name": "build",
+      "status": "passed",
+      "seconds": 2.3,
+      "log_tail": "sha256:d42e8cf4786d710c774ee95c9fe831422cba43fed181a55ca26f837717276a91"
+    },
+    {
+      "name": "start",
+      "status": "passed",
+      "seconds": 0.3,
+      "log_tail": "d89cd2740b9a898a16ebc90d491cf6cdc09cc9d687f7f954d5ccf84746055fa8"
+    },
+    {
+      "name": "health",
+      "status": "failed",
+      "seconds": 1.4,
+      "log_tail": "node:internal/modules/package_json_reader:197\n    const result = modulesBinding.getNearestParentPackageJSON(checkPath);\n                                  ^\n\nError: Cannot read package config /app/package.json: permission denied.\n    at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:197:35)\n    at trySelf (node:internal/modules/cjs/loader:662:33)\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1548:24)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)\n    at Module._load (node:internal/modules/cjs/loader:1341:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.require (node:internal/modules/cjs/loader:1674:12)\n    at node:internal/modules/cjs/loader:2221:12 {\n  code: 'ERR_INVALID_PACKAGE_CONFIG'\n}\n\nNode.js v24.21.0"
+    }
+  ],
+  "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -9,7 +9,7 @@\n       \"version\": \"1.0.0\",\n       \"license\": \"ISC\",\n       \"dependencies\": {\n-        \"lodash\": \"4.18.1\",\n+        \"lodash\": \"4.17.21\",\n         \"request\": \"2.88.2\"\n       }\n     },\n@@ -281,9 +281,9 @@\n       }\n     },\n     \"node_modules/lodash\": {\n-      \"version\": \"4.18.1\",\n-      \"resolved\": \"https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz\",\n-      \"integrity\": \"sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==\",\n+      \"version\": \"4.17.21\",\n+      \"resolved\": \"https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz\",\n+      \"integrity\": \"sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==\",\n       \"license\": \"MIT\"\n     },\n     \"node_modules/mime-db\": {\n--- a/package.json\n+++ b/package.json\n@@ -12,7 +12,7 @@\n   \"license\": \"ISC\",\n   \"type\": \"commonjs\",\n   \"dependencies\": {\n-    \"lodash\": \"4.18.1\",\n+    \"lodash\": \"4.17.21\",\n     \"request\": \"2.88.2\"\n   }\n }\n",
+  "resolved": [],
+  "remaining": [],
+  "introduced": [],
+  "scan_db_updated_at": null,
+  "method": "direct",
+  "candidates": [
+    {
+      "package": "lodash",
+      "target": "4.17.21",
+      "method": "direct"
+    }
+  ],
+  "files": []
+}

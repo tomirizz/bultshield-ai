@@ -1,0 +1,33 @@
+ИТОГ: STILL_DETECTED
+Приложение работает, но 3 из 7 целевых находок остались в пересобранном образе: обновление их не закрыло.
+Способ обновления: npm install пакет@версия (прямая зависимость)
+
+Шаги:
+  docker   passed      0.5 c
+  install  passed      2.1 c
+  tests    passed      2.3 c
+  build    passed      0.2 c
+  start    passed      0.3 c
+  health   passed      0.7 c
+  save     passed      0.5 c
+  rescan   passed      0.5 c
+
+Закрыто: CVE-2020-28500 (lodash), CVE-2020-8203 (lodash), CVE-2021-23337 (lodash), NSWG-ECO-516 (lodash)
+
+Осталось: CVE-2025-13465 (lodash), CVE-2026-2950 (lodash), CVE-2026-4800 (lodash)
+
+Новые: CVE-2023-26136 (tough-cookie), CVE-2023-28155 (request), CVE-2025-15284 (qs), CVE-2025-7783 (form-data), CVE-2026-12143 (form-data), CVE-2026-41907 (uuid), CVE-2026-82417 (qs)
+
+Diff (кратко):
+-        "lodash": "4.18.1",
++        "lodash": "4.17.21",
+-      "version": "4.18.1",
+-      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz",
+-      "integrity": "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==",
++      "version": "4.17.21",
++      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
++      "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==",
+-    "lodash": "4.18.1",
++    "lodash": "4.17.21",
+
+Полный результат: docs/handover/evidence/still-detected.json

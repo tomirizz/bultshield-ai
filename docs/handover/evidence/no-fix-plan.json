@@ -1,0 +1,178 @@
+{
+  "packages": [
+    {
+      "package": "form-data",
+      "installed": "2.3.3",
+      "finding_ids": [
+        "CVE-2025-7783",
+        "CVE-2026-12143"
+      ],
+      "status": "fix_proposed",
+      "reason": "Исправление предложено, но проверка не завершена: проверка в песочнице не запускалась (режим --plan-only).",
+      "target": "2.5.6",
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "2.5.6",
+        "major_change": false,
+        "resolves": [
+          "CVE-2025-7783",
+          "CVE-2026-12143"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "INCONCLUSIVE",
+        "reason": "проверка в песочнице не запускалась (режим --plan-only)."
+      }
+    },
+    {
+      "package": "qs",
+      "installed": "6.5.5",
+      "finding_ids": [
+        "CVE-2025-15284",
+        "CVE-2026-82417"
+      ],
+      "status": "fix_proposed",
+      "reason": "Исправление предложено, но проверка не завершена: проверка в песочнице не запускалась (режим --plan-only).",
+      "target": "6.16.0",
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "6.16.0",
+        "major_change": false,
+        "resolves": [
+          "CVE-2025-15284",
+          "CVE-2026-82417"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "INCONCLUSIVE",
+        "reason": "проверка в песочнице не запускалась (режим --plan-only)."
+      }
+    },
+    {
+      "package": "request",
+      "installed": "2.88.2",
+      "finding_ids": [
+        "CVE-2023-28155"
+      ],
+      "status": "manual_intervention",
+      "reason": "ни одну находку нельзя закрыть обновлением",
+      "target": null,
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "MANUAL",
+        "target": null,
+        "major_change": false,
+        "resolves": [],
+        "manual": [
+          [
+            "CVE-2023-28155",
+            "исправленной версии нет"
+          ]
+        ],
+        "reason": "ни одну находку нельзя закрыть обновлением"
+      },
+      "verification": null
+    },
+    {
+      "package": "tough-cookie",
+      "installed": "2.5.0",
+      "finding_ids": [
+        "CVE-2023-26136"
+      ],
+      "status": "fix_proposed",
+      "reason": "Исправление предложено, но проверка не завершена: проверка в песочнице не запускалась (режим --plan-only).",
+      "target": "4.1.3",
+      "major_change": true,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "4.1.3",
+        "major_change": true,
+        "resolves": [
+          "CVE-2023-26136"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "INCONCLUSIVE",
+        "reason": "проверка в песочнице не запускалась (режим --plan-only)."
+      }
+    },
+    {
+      "package": "uuid",
+      "installed": "3.4.0",
+      "finding_ids": [
+        "CVE-2026-41907"
+      ],
+      "status": "fix_proposed",
+      "reason": "Исправление предложено, но проверка не завершена: проверка в песочнице не запускалась (режим --plan-only).",
+      "target": "11.1.1",
+      "major_change": true,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "11.1.1",
+        "major_change": true,
+        "resolves": [
+          "CVE-2026-41907"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "INCONCLUSIVE",
+        "reason": "проверка в песочнице не запускалась (режим --plan-only)."
+      }
+    }
+  ],
+  "other": [
+    {
+      "origin": "base-tooling",
+      "status": "manual_intervention",
+      "reason": "пакет относится к инструментам базового образа, а не к зависимостям приложения",
+      "count": 21
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "исправление есть в обновлённом пакете ОС: обновите базовый образ",
+      "count": 13
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "исправления для пакета ОС пока нет",
+      "count": 171
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "мейнтейнеры дистрибутива не будут исправлять эту проблему",
+      "count": 14
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "мейнтейнеры дистрибутива отложили исправление",
+      "count": 37
+    }
+  ],
+  "summary": {
+    "packages": 5,
+    "fix_passed_verification": 0,
+    "fix_proposed": 4,
+    "manual_intervention": 1,
+    "needs_review": 0
+  },
+  "combined": null
+}

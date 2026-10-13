@@ -1,0 +1,78 @@
+{
+ "check": {
+  "id": "e7065736-e3d4-4697-9304-d9228b9dac93",
+  "kind": "static",
+  "status": "FAILED",
+  "error_code": "CHECKOUT_FAILED",
+  "error_message": "Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.",
+  "created_at": "2026-10-09T12:46:21.013797+00:00",
+  "completed_at": "2026-10-09T12:46:22.357758+00:00"
+ },
+ "subject": {
+  "repository_id": "72706e3e-b306-4bfb-bb4b-eafbcb07f1d3",
+  "commit_sha": null,
+  "requested_commit": "aa7759883f250c81139e7f2a28bba00cf73c6246",
+  "trigger": "api",
+  "watched": false,
+  "image": null,
+  "image_digest": null
+ },
+ "verdict": {
+  "result": "INCOMPLETE",
+  "statement": "Проверка выполнена не полностью. Отсутствие находок в этом отчёте не означает отсутствие уязвимостей."
+ },
+ "facts": {
+  "scanners": {
+   "trivy": {
+    "error": "Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.",
+    "status": "FAILED",
+    "error_code": "CHECKOUT_FAILED"
+   },
+   "semgrep": {
+    "error": "Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.",
+    "status": "FAILED",
+    "error_code": "CHECKOUT_FAILED"
+   },
+   "gitleaks": {
+    "error": "Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.",
+    "status": "FAILED",
+    "error_code": "CHECKOUT_FAILED"
+   }
+  },
+  "total_findings": 0,
+  "by_severity": {},
+  "by_origin": {},
+  "by_status": {}
+ },
+ "findings": {
+  "items": [],
+  "limit": 500,
+  "offset": 0,
+  "total": 0
+ },
+ "changes_since_previous": null,
+ "fix_run": null,
+ "deployment": null,
+ "assumptions": [],
+ "llm": {
+  "status": "NOT_RUN",
+  "message": "Пояснения модели не запрашивались.",
+  "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+  "explained": 0,
+  "failed": 0,
+  "provider": null,
+  "model": null,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "failures": [],
+  "job": null
+ },
+ "proposed_actions": [],
+ "limitations": [
+  "Исправления проверяются только в изолированной копии. Статус «применено к приложению» ставится, только если PR слит, образ собран после слияния и повторный скан нового образа больше не видит находку, а пакет в нём виден. Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.",
+  "Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.",
+  "Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.",
+  "Пояснения языковой модели — предположения: они не проверялись сканерами и не влияют на статусы."
+ ]
+}

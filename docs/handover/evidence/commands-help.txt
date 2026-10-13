@@ -1,0 +1,232 @@
+$ python scripts/ci_check.py --help
+exit=0
+usage: ci_check.py [-h] [--url URL] [--repository-id REPOSITORY_ID] --image
+                   IMAGE [--watch] [--wait СЕКУНДЫ] [--strict]
+
+Запуск проверки образа из CI после сборки. Только стандартная библиотека Python: файл можно просто скопировать в репозиторий проекта.
+
+Пример (после docker build и docker push, образ указывается по digest, чтобы результат относился к конкретной сборке):
+  BULTSHIELD_URL=https://bultshield.example BULTSHIELD_REPOSITORY_ID=<id> BULTSHIELD_TOKEN=<токен CI> \
+  python3 ci_check.py --image registry.example/app@sha256:... --watch --wait 600
+
+Настройки: --url / BULTSHIELD_URL, --repository-id / BULTSHIELD_REPOSITORY_ID, токен только из окружения BULTSHIELD_TOKEN
+(в аргументах командной строки он был бы виден в списке процессов; сервер без входа через GitHub, например локальный, токен не требует).
+
+Проверка НЕ блокирует деплой: код возврата 0, даже если найдены уязвимости или проверку не удалось запустить. В последнем случае
+скрипт громко предупреждает (в GitHub Actions как warning): «проверка не выполнена» никогда не означает «уязвимостей нет».
+С --strict код возврата 2, если проверка не запустилась или завершилась ошибкой (находки код возврата не меняют).
+--watch: образ опубликован, сервер будет перепроверять его по расписанию.
+--wait N: ждать результат до N секунд и показать итог; без него скрипт только ставит проверку в очередь.
+
+options:
+  -h, --help            show this help message and exit
+  --url URL
+  --repository-id REPOSITORY_ID
+  --image IMAGE         ссылка на образ в реестре, лучше с digest:
+                        registry/app@sha256:...
+  --watch               перепроверять образ по расписанию
+  --wait СЕКУНДЫ        ждать результат не дольше этого времени (0: не ждать)
+  --strict              код возврата 2, если проверка не запустилась или
+                        завершилась ошибкой
+
+$ python scripts/run_fix_check.py --help
+exit=0
+usage: run_fix_check.py [-h] [--commit COMMIT] [--plan-only] [--create-pr]
+                        [--repo REPO] [--base-branch BASE_BRANCH]
+                        [--project-path PROJECT_PATH]
+                        check_id project
+
+Запуск агента исправлений для проверки образа из БД и сохранение результата.
+
+Пример:
+  python scripts/run_fix_check.py <id проверки образа> ~/projects/bultshield-training-app
+  python scripts/run_fix_check.py <id проверки образа> ~/projects/bultshield-training-app --plan-only
+  python scripts/run_fix_check.py <id> ~/projects/bultshield-training-app --create-pr --repo владелец/репозиторий
+
+С --create-pr после проверки показывается текст PR, и PR создаётся только после подтверждения (нужны GITHUB_FIX_TOKEN
+и FIX_PR_ALLOWED_REPOS). PR привязывается к запуску: позже его слияние подтверждает scripts/confirm_fix_deployment.py.
+
+Что делает: берёт находки этой проверки из БД, проверяет обновления в песочнице (Docker) на копии проекта,
+записывает результат в БД и печатает статусы так, как их покажет отчёт GET /api/checks/<id>/report.
+Версию кода берёт из git проекта: если в каталоге есть незакоммиченные изменения, запуск отклоняется.
+Нужны DATABASE_URL (переменная окружения или .env) и применённые миграции.
+
+positional arguments:
+  check_id              идентификатор завершённой проверки образа
+  project
+
+options:
+  -h, --help            show this help message and exit
+  --commit COMMIT       полный SHA коммита проекта (по умолчанию из git
+                        проекта)
+  --plan-only           только план версий, без Docker
+  --create-pr           после проверки создать PR (с подтверждением)
+  --repo REPO           владелец/репозиторий на GitHub (для --create-pr)
+  --base-branch BASE_BRANCH
+  --project-path PROJECT_PATH
+                        папка проекта внутри репозитория, например app/
+
+$ python scripts/run_sandbox.py --help
+exit=0
+usage: run_sandbox.py [-h] [--json JSON] project package version baseline
+
+Ручной запуск песочницы: проверить обновление пакета в копии проекта.
+
+Пример:
+  python scripts/run_sandbox.py ~/projects/sandbox-trial lodash 4.18.1 ~/projects/image-scans/demo-main.json
+Где последний аргумент — JSON-отчёт Trivy по исходному образу (до исправления).
+
+positional arguments:
+  project
+  package
+  version
+  baseline     JSON-отчёт Trivy по исходному образу
+
+options:
+  -h, --help   show this help message and exit
+  --json JSON  сохранить полный результат в этот файл
+
+$ python scripts/run_fix_agent.py --help
+exit=0
+usage: run_fix_agent.py [-h] [--plan-only] [--json JSON] project baseline
+
+Ручной запуск агента исправлений: план обновлений и проверка каждого в песочнице.
+
+Пример:
+  python scripts/run_fix_agent.py ~/projects/sandbox-trial ~/projects/image-scans/demo-main.json
+  python scripts/run_fix_agent.py ~/projects/sandbox-trial ~/projects/image-scans/demo-main.json --plan-only
+Последний режим только выбирает версии (нужен интернет для реестра npm) и не запускает Docker.
+
+positional arguments:
+  project
+  baseline     JSON-отчёт Trivy по исходному образу
+
+options:
+  -h, --help   show this help message and exit
+  --plan-only  только план, без Docker
+  --json JSON  сохранить полный результат в этот файл
+
+$ python scripts/confirm_fix_deployment.py --help
+exit=0
+usage: confirm_fix_deployment.py [-h] run_id rescan_id
+
+Подтверждение, что исправление применено: PR слит, образ собран после слияния, повторный скан не видит находку.
+
+Порядок:
+  1. Человек сливает PR на GitHub (система слияние не выполняет).
+  2. Образ пересобирается из слитого кода и публикуется в реестр.
+  3. Запускается новая проверка этого образа (POST /api/checks) и дожидается завершения.
+  4. python scripts/confirm_fix_deployment.py <id запуска агента> <id новой проверки образа>
+
+Нужны GITHUB_FIX_TOKEN (достаточно прав на чтение: Contents и Pull requests: Read), FIX_PR_ALLOWED_REPOS и DATABASE_URL.
+Если доказательств не хватает, находка остаётся «прошла проверку», а скрипт называет причину.
+
+positional arguments:
+  run_id      идентификатор запуска агента (его печатает run_fix_check.py)
+  rescan_id   идентификатор новой завершённой проверки пересобранного образа
+
+options:
+  -h, --help  show this help message and exit
+
+$ python scripts/run_image_rescan.py --help
+exit=0
+usage: run_image_rescan.py [-h] [--list] [--older-than-hours OLDER_THAN_HOURS]
+                           [--limit LIMIT]
+
+Перепроверка опубликованных образов вручную (то же, что worker делает по расписанию).
+
+Примеры:
+  python scripts/run_image_rescan.py --list                      # какие образы под наблюдением и когда проверялись
+  python scripts/run_image_rescan.py --older-than-hours 0        # поставить в очередь перепроверку сразу, не дожидаясь срока
+  python scripts/run_image_rescan.py --older-than-hours 24 --limit 5
+
+Образ попадает под наблюдение, если его последняя проверка запущена с watch (ci_check.py --watch или поле watch в POST /api/checks).
+Скрипт только ставит перепроверки в очередь; саму проверку делает worker. Нужны DATABASE_URL и применённые миграции.
+
+options:
+  -h, --help            show this help message and exit
+  --list                только показать образы под наблюдением
+  --older-than-hours OLDER_THAN_HOURS
+                        перепроверять образы, последняя проверка которых
+                        старше (по умолчанию 24)
+  --limit LIMIT         сколько перепроверок поставить в очередь за запуск
+
+$ python scripts/run_llm_explain.py --help
+exit=0
+usage: run_llm_explain.py [-h] [--dry-run] [--max-calls MAX_CALLS] check_id
+
+Пояснения языковой модели к находкам проверки: что отправится, запрос к модели, что вошло в отчёт.
+
+Примеры:
+  python scripts/run_llm_explain.py <id проверки> --dry-run     # только показать, что отправится (ничего не отправляется)
+  LLM_PROVIDER=fake python scripts/run_llm_explain.py <id>       # тестовая модель без сети
+  LLM_PROVIDER=fake LLM_FAKE_MODE=unavailable python scripts/run_llm_explain.py <id>   # имитация недоступной модели
+
+Настройки (переменные окружения или .env): LLM_PROVIDER (disabled | fake | openai | anthropic), LLM_API_KEY, LLM_MODEL, LLM_BASE_URL,
+LLM_MAX_CALLS_PER_CHECK, LLM_DAILY_CALL_LIMIT, LLM_PRICE_INPUT_PER_MTOK, LLM_PRICE_OUTPUT_PER_MTOK.
+Ключ читается только из окружения сервера и нигде не печатается.
+
+Пояснение модели — предположение: оно не меняет находки, статусы и исправления. Если модель недоступна,
+проверка и отчёт остаются прежними, а причина отсутствия пояснений показывается в разделе llm отчёта.
+
+positional arguments:
+  check_id              идентификатор проверки
+
+options:
+  -h, --help            show this help message and exit
+  --dry-run             показать, что отправится модели, ничего не отправляя и
+                        не сохраняя
+  --max-calls MAX_CALLS
+                        не больше стольки запросов за этот запуск (и не больше
+                        LLM_MAX_CALLS_PER_CHECK)
+
+$ python scripts/request_explanations.py --help
+exit=0
+usage: request_explanations.py [-h] [--url URL] [--wait WAIT] check_id
+
+Запрос пояснений модели к находкам проверки и ожидание результата. Только стандартная библиотека.
+
+Пример:  BULTSHIELD_URL=http://127.0.0.1:8080 python scripts/request_explanations.py <id проверки> [--wait 120]
+
+Работу выполняет worker в фоне; скрипт ставит задание, ждёт его и печатает итог. Сервер и worker должны быть запущены
+с подключённой моделью (LLM_PROVIDER=fake для проверки без сети). Пояснения — предположения модели: статусы находок они не меняют.
+Если модель недоступна, скрипт так и пишет, а результаты проверки остаются прежними.
+
+positional arguments:
+  check_id
+
+options:
+  -h, --help   show this help message and exit
+  --url URL
+  --wait WAIT  сколько секунд ждать результат (0: только поставить в очередь)
+
+$ python scripts/collect_evidence.py --help
+exit=0
+usage: collect_evidence.py [-h] [--url URL] [--reports REPORTS]
+                           [--skip-sandbox] [--skip-estimate]
+                           [--llm-wait LLM_WAIT] [--out OUT]
+
+Сбор настоящих результатов для сдачи: ничего не придумывается, всё берётся из работающей системы.
+
+Запуск (из корня проекта, API и worker запущены, Docker Desktop запущен):
+  python scripts/collect_evidence.py --url http://127.0.0.1:8080
+
+Что делает (каждый шаг независим: сбой одного не останавливает остальные и честно записывается в итог):
+  1. отчёты последних проверок (в том числе завершившихся ошибкой) -> docs/handover/examples/*.json;
+  2. причины ошибок проверок, завершившихся FAILED -> docs/handover/evidence/failed-scans.txt;
+  3. обновление, которое ломает приложение: песочница с uuid 11.1.1 (ожидается BREAKS_APP) -> docs/handover/evidence/breaking-update.txt;
+  4. пояснения модели (если в API и worker включён LLM_PROVIDER) -> docs/handover/evidence/llm-explanations.txt;
+  5. оценка расходов на модель (ничего не отправляется) -> docs/handover/evidence/llm-estimate.txt;
+  6. summary.txt: что получилось, а что нет.
+Токены и ключи в файлы не попадают: скрипт их не читает и не печатает.
+
+options:
+  -h, --help           show this help message and exit
+  --url URL
+  --reports REPORTS    сколько последних проверок выгрузить
+  --skip-sandbox       не запускать песочницу (она идёт несколько минут и
+                       требует Docker)
+  --skip-estimate      не считать оценку расходов на модель (нужен доступ к
+                       БД)
+  --llm-wait LLM_WAIT
+  --out OUT            куда сложить результаты (по умолчанию docs/handover)

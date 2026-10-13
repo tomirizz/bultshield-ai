@@ -1,0 +1,39 @@
+В очередь поставлена перепроверка 33822299-ac23-424b-8cbc-f0fa06df12cf: localhost:5001/bultshield-training-app@sha256:04aaf9075337deea3f9a019f9eb1ace2a64dae874b5c2975813b6655b9f33f43 (предыдущая 7a9ac236-ae71-4fb8-87b8-368ea003db3b)
+Результат появится, когда worker закончит проверку: GET /api/checks/<id>/report, блок changes_since_previous.
+
+Worker result: {
+  "check": {
+    "id": "33822299-ac23-424b-8cbc-f0fa06df12cf",
+    "kind": "image",
+    "status": "COMPLETED",
+    "error_code": null,
+    "error_message": null,
+    "created_at": "2026-10-13T17:50:58.365160+00:00",
+    "completed_at": "2026-10-13T17:50:58.881304+00:00"
+  },
+  "subject": {
+    "repository_id": "72706e3e-b306-4bfb-bb4b-eafbcb07f1d3",
+    "commit_sha": null,
+    "requested_commit": null,
+    "trigger": "schedule",
+    "watched": true,
+    "image": "localhost:5001/bultshield-training-app@sha256:04aaf9075337deea3f9a019f9eb1ace2a64dae874b5c2975813b6655b9f33f43",
+    "image_digest": "sha256:04aaf9075337deea3f9a019f9eb1ace2a64dae874b5c2975813b6655b9f33f43"
+  },
+  "verdict": {
+    "result": "FINDINGS",
+    "statement": "Сканеры нашли проблем: 265."
+  },
+  "changes": {
+    "previous_check_id": "7a9ac236-ae71-4fb8-87b8-368ea003db3b",
+    "previous_completed_at": "2026-10-13T17:50:22.193680+00:00",
+    "previous_image_digest": "sha256:04aaf9075337deea3f9a019f9eb1ace2a64dae874b5c2975813b6655b9f33f43",
+    "same_image": true,
+    "new": 0,
+    "fixed": 0,
+    "unchanged": 265,
+    "new_findings": [],
+    "new_findings_truncated": false,
+    "explanation": "Образ тот же, новых находок нет."
+  }
+}

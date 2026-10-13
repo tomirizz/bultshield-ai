@@ -1,0 +1,538 @@
+{
+  "packages": [
+    {
+      "package": "form-data",
+      "installed": "2.3.3",
+      "finding_ids": [
+        "CVE-2025-7783",
+        "CVE-2026-12143"
+      ],
+      "status": "fix_passed_verification",
+      "reason": "Тесты, сборка и запуск прошли; все 2 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+      "target": "2.5.6",
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "2.5.6",
+        "major_change": false,
+        "resolves": [
+          "CVE-2025-7783",
+          "CVE-2026-12143"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "FIX_VERIFIED",
+        "reason": "Тесты, сборка и запуск прошли; все 2 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+        "failed_step": null,
+        "steps": [
+          {
+            "name": "docker",
+            "status": "passed",
+            "seconds": 0.1,
+            "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: io.containerd.runc.v2 runc\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+          },
+          {
+            "name": "install",
+            "status": "passed",
+            "seconds": 5.7,
+            "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 62 packages in 5s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+          },
+          {
+            "name": "tests",
+            "status": "passed",
+            "seconds": 2.2,
+            "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (3.755292ms)\n✔ request library loads (287.497751ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1062.576001"
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "seconds": 0.2,
+            "log_tail": "sha256:b7d055d3ea656970dd8daefe01e44d30add1acacd6a10eadebf3e31f804efdd1"
+          },
+          {
+            "name": "start",
+            "status": "passed",
+            "seconds": 0.3,
+            "log_tail": "898a67be5a9d9146f5063a0cbe90fd697468d09ae61dc6848256a8ed56f66d57"
+          },
+          {
+            "name": "health",
+            "status": "passed",
+            "seconds": 0.7,
+            "log_tail": ""
+          },
+          {
+            "name": "save",
+            "status": "passed",
+            "seconds": 0.5,
+            "log_tail": ""
+          },
+          {
+            "name": "rescan",
+            "status": "passed",
+            "seconds": 0.7,
+            "log_tail": ""
+          }
+        ],
+        "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -77,6 +77,19 @@\n         \"tweetnacl\": \"^0.14.3\"\n       }\n     },\n+    \"node_modules/call-bind-apply-helpers\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz\",\n+      \"integrity\": \"sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/caseless\": {\n       \"version\": \"0.12.0\",\n       \"resolved\": \"https://registry.npmjs.org/caseless/-/caseless-0.12.0.tgz\",\n@@ -122,6 +135,20 @@\n         \"node\": \">=0.4.0\"\n       }\n     },\n+    \"node_modules/dunder-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"gopd\": \"^1.2.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/ecc-jsbn\": {\n       \"version\": \"0.1.2\",\n       \"resolved\": \"https://registry.npmjs.org/ecc-jsbn/-/ecc-jsbn-0.1.2.tgz\",\n@@ -130,6 +157,51 @@\n       \"dependencies\": {\n         \"jsbn\": \"~0.1.0\",\n         \"safer-buffer\": \"^2.1.0\"\n+      }\n+    },\n+    \"node_modules/es-define-property\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz\",\n+      \"integrity\": \"sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-errors\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz\",\n+      \"integrity\": \"sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-object-atoms\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz\",\n+      \"integrity\": \"sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-set-tostringtag\": {\n+      \"version\": \"2.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz\",\n+      \"integrity\": \"sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.6\",\n+        \"has-tostringtag\": \"^1.0.2\",\n+        \"hasown\": \"^2.0.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n       }\n     },\n     \"node_modules/extend\": {\n@@ -169,17 +241,66 @@\n       }\n     },\n     \"node_modules/form-data\": {\n-      \"version\": \"2.3.3\",\n-      \"resolved\": \"https://registry.npmjs.org/form-data/-/form-data-2.3.3.tgz\",\n-      \"integrity\": \"sha512-1lLKB2Mu3aGP1Q/2eCOx0fNbRMe7XdwktwOruhfqqd0rIJWwN4Dh+E3hrPSlDCXnSR7UtZ1N38rVXm+6+MEhJQ==\",\n+      \"version\": \"2.5.6\",\n+      \"resolved\": \"https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz\",\n+      \"integrity\": \"sha512-Ogz/E85h9tlfJzpI6TuFpGcHZFhLrb9Gw8wq9v40CxSCPnv7ahKr6Xgtkn0KYCDQJ8DNn5VoMO8EXr9V5PadyA==\",\n       \"license\": \"MIT\",\n       \"dependencies\": {\n         \"asynckit\": \"^0.4.0\",\n-        \"combined-stream\": \"^1.0.6\",\n-        \"mime-types\": \"^2.1.12\"\n+        \"combined-stream\": \"^1.0.8\",\n+        \"es-set-tostringtag\": \"^2.1.0\",\n+        \"hasown\": \"^2.0.4\",\n+        \"mime-types\": \"^2.1.35\",\n+        \"safe-buffer\": \"^5.2.1\"\n       },\n       \"engines\": {\n         \"node\": \">= 0.12\"\n+      }\n+    },\n+    \"node_modules/function-bind\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz\",\n+      \"integrity\": \"sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==\",\n+      \"license\": \"MIT\",\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-intrinsic\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz\",\n+      \"integrity\": \"sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.2\",\n+        \"es-define-property\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"es-object-atoms\": \"^1.1.1\",\n+        \"function-bind\": \"^1.1.2\",\n+        \"get-proto\": \"^1.0.1\",\n+        \"gopd\": \"^1.2.0\",\n+        \"has-symbols\": \"^1.1.0\",\n+        \"hasown\": \"^2.0.2\",\n+        \"math-intrinsics\": \"^1.1.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"dunder-proto\": \"^1.0.1\",\n+        \"es-object-atoms\": \"^1.0.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n       }\n     },\n     \"node_modules/getpass\": {\n@@ -189,6 +310,18 @@\n       \"license\": \"MIT\",\n       \"dependencies\": {\n         \"assert-plus\": \"^1.0.0\"\n+      }\n+    },\n+    \"node_modules/gopd\": {\n+      \"version\": \"1.2.0\",\n+      \"resolved\": \"https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz\",\n+      \"integrity\": \"sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n       }\n     },\n     \"node_modules/har-schema\": {\n@@ -214,6 +347,45 @@\n         \"node\": \">=6\"\n       }\n     },\n+    \"node_modules/has-symbols\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz\",\n+      \"integrity\": \"sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/has-tostringtag\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz\",\n+      \"integrity\": \"sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"has-symbols\": \"^1.0.3\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/hasown\": {\n+      \"version\": \"2.0.4\",\n+      \"resolved\": \"https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz\",\n+      \"integrity\": \"sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/http-signature\": {\n       \"version\": \"1.2.0\",\n       \"resolved\": \"https://registry.npmjs.org/http-signature/-/http-signature-1.2.0.tgz\",\n@@ -285,6 +457,15 @@\n       \"resolved\": \"https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz\",\n       \"integrity\": \"sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==\",\n       \"license\": \"MIT\"\n+    },\n+    \"node_modules/math-intrinsics\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz\",\n+      \"integrity\": \"sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n     },\n     \"node_modules/mime-db\": {\n       \"version\": \"1.52.0\",\n--- a/package.json\n+++ b/package.json\n@@ -14,5 +14,8 @@\n   \"dependencies\": {\n     \"lodash\": \"4.18.1\",\n     \"request\": \"2.88.2\"\n+  },\n+  \"overrides\": {\n+    \"form-data\": \"2.5.6\"\n   }\n }\n",
+        "resolved": [
+          {
+            "rule_id": "CVE-2025-7783",
+            "package": "form-data"
+          },
+          {
+            "rule_id": "CVE-2026-12143",
+            "package": "form-data"
+          }
+        ],
+        "remaining": [],
+        "introduced": [],
+        "scan_db_updated_at": "2026-10-13T06:41:11.035783622Z",
+        "method": "override",
+        "candidates": [
+          {
+            "package": "form-data",
+            "target": "2.5.6",
+            "method": "override"
+          }
+        ],
+        "files": [
+          "package-lock.json",
+          "package.json"
+        ]
+      }
+    },
+    {
+      "package": "qs",
+      "installed": "6.5.5",
+      "finding_ids": [
+        "CVE-2025-15284",
+        "CVE-2026-82417"
+      ],
+      "status": "fix_passed_verification",
+      "reason": "Тесты, сборка и запуск прошли; все 2 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+      "target": "6.16.0",
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "6.16.0",
+        "major_change": false,
+        "resolves": [
+          "CVE-2025-15284",
+          "CVE-2026-82417"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "FIX_VERIFIED",
+        "reason": "Тесты, сборка и запуск прошли; все 2 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+        "failed_step": null,
+        "steps": [
+          {
+            "name": "docker",
+            "status": "passed",
+            "seconds": 0.2,
+            "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: io.containerd.runc.v2 runc\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+          },
+          {
+            "name": "install",
+            "status": "passed",
+            "seconds": 4.6,
+            "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 66 packages in 4s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+          },
+          {
+            "name": "tests",
+            "status": "passed",
+            "seconds": 2.2,
+            "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (3.808542ms)\n✔ request library loads (292.084541ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1083.043084"
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "seconds": 0.2,
+            "log_tail": "sha256:11667f50f435e859b3374871a631a2c2a7ce5b731182d63c8902541873e3e6ad"
+          },
+          {
+            "name": "start",
+            "status": "passed",
+            "seconds": 0.3,
+            "log_tail": "4280de80b7ba21f648141aefb9e5bfc41936ef904c1a0edabb4c784c4b34691e"
+          },
+          {
+            "name": "health",
+            "status": "passed",
+            "seconds": 0.8,
+            "log_tail": ""
+          },
+          {
+            "name": "save",
+            "status": "passed",
+            "seconds": 0.7,
+            "log_tail": ""
+          },
+          {
+            "name": "rescan",
+            "status": "passed",
+            "seconds": 0.3,
+            "log_tail": ""
+          }
+        ],
+        "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -77,6 +77,35 @@\n         \"tweetnacl\": \"^0.14.3\"\n       }\n     },\n+    \"node_modules/call-bind-apply-helpers\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz\",\n+      \"integrity\": \"sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/call-bound\": {\n+      \"version\": \"1.0.4\",\n+      \"resolved\": \"https://registry.npmjs.org/call-bound/-/call-bound-1.0.4.tgz\",\n+      \"integrity\": \"sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.2\",\n+        \"get-intrinsic\": \"^1.3.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/caseless\": {\n       \"version\": \"0.12.0\",\n       \"resolved\": \"https://registry.npmjs.org/caseless/-/caseless-0.12.0.tgz\",\n@@ -122,6 +151,20 @@\n         \"node\": \">=0.4.0\"\n       }\n     },\n+    \"node_modules/dunder-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"gopd\": \"^1.2.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/ecc-jsbn\": {\n       \"version\": \"0.1.2\",\n       \"resolved\": \"https://registry.npmjs.org/ecc-jsbn/-/ecc-jsbn-0.1.2.tgz\",\n@@ -130,6 +173,36 @@\n       \"dependencies\": {\n         \"jsbn\": \"~0.1.0\",\n         \"safer-buffer\": \"^2.1.0\"\n+      }\n+    },\n+    \"node_modules/es-define-property\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz\",\n+      \"integrity\": \"sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-errors\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz\",\n+      \"integrity\": \"sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-object-atoms\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz\",\n+      \"integrity\": \"sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n       }\n     },\n     \"node_modules/extend\": {\n@@ -182,6 +255,52 @@\n         \"node\": \">= 0.12\"\n       }\n     },\n+    \"node_modules/function-bind\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz\",\n+      \"integrity\": \"sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==\",\n+      \"license\": \"MIT\",\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-intrinsic\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz\",\n+      \"integrity\": \"sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.2\",\n+        \"es-define-property\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"es-object-atoms\": \"^1.1.1\",\n+        \"function-bind\": \"^1.1.2\",\n+        \"get-proto\": \"^1.0.1\",\n+        \"gopd\": \"^1.2.0\",\n+        \"has-symbols\": \"^1.1.0\",\n+        \"hasown\": \"^2.0.2\",\n+        \"math-intrinsics\": \"^1.1.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"dunder-proto\": \"^1.0.1\",\n+        \"es-object-atoms\": \"^1.0.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/getpass\": {\n       \"version\": \"0.1.7\",\n       \"resolved\": \"https://registry.npmjs.org/getpass/-/getpass-0.1.7.tgz\",\n@@ -189,6 +308,18 @@\n       \"license\": \"MIT\",\n       \"dependencies\": {\n         \"assert-plus\": \"^1.0.0\"\n+      }\n+    },\n+    \"node_modules/gopd\": {\n+      \"version\": \"1.2.0\",\n+      \"resolved\": \"https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz\",\n+      \"integrity\": \"sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n       }\n     },\n     \"node_modules/har-schema\": {\n@@ -214,6 +345,30 @@\n         \"node\": \">=6\"\n       }\n     },\n+    \"node_modules/has-symbols\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz\",\n+      \"integrity\": \"sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/hasown\": {\n+      \"version\": \"2.0.4\",\n+      \"resolved\": \"https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz\",\n+      \"integrity\": \"sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/http-signature\": {\n       \"version\": \"1.2.0\",\n       \"resolved\": \"https://registry.npmjs.org/http-signature/-/http-signature-1.2.0.tgz\",\n@@ -286,6 +441,15 @@\n       \"integrity\": \"sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==\",\n       \"license\": \"MIT\"\n     },\n+    \"node_modules/math-intrinsics\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz\",\n+      \"integrity\": \"sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/mime-db\": {\n       \"version\": \"1.52.0\",\n       \"resolved\": \"https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz\",\n@@ -316,6 +480,18 @@\n         \"node\": \"*\"\n       }\n     },\n+    \"node_modules/object-inspect\": {\n+      \"version\": \"1.13.4\",\n+      \"resolved\": \"https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.4.tgz\",\n+      \"integrity\": \"sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/performance-now\": {\n       \"version\": \"2.1.0\",\n       \"resolved\": \"https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz\",\n@@ -344,12 +520,19 @@\n       }\n     },\n     \"node_modules/qs\": {\n-      \"version\": \"6.5.5\",\n-      \"resolved\": \"https://registry.npmjs.org/qs/-/qs-6.5.5.tgz\",\n-      \"integrity\": \"sha512-mzR4sElr1bfCaPJe7m8ilJ6ZXdDaGoObcYR0ZHSsktM/Lt21MVHj5De30GQH2eiZ1qGRTO7LCAzQsUeXTNexWQ==\",\n+      \"version\": \"6.16.0\",\n+      \"resolved\": \"https://registry.npmjs.org/qs/-/qs-6.16.0.tgz\",\n+      \"integrity\": \"sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==\",\n       \"license\": \"BSD-3-Clause\",\n+      \"dependencies\": {\n+        \"es-define-property\": \"^1.0.1\",\n+        \"side-channel\": \"^1.1.1\"\n+      },\n       \"engines\": {\n         \"node\": \">=0.6\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n       }\n     },\n     \"node_modules/request\": {\n@@ -410,6 +593,78 @@\n       \"integrity\": \"sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==\",\n       \"license\": \"MIT\"\n     },\n+    \"node_modules/side-channel\": {\n+      \"version\": \"1.1.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel/-/side-channel-1.1.1.tgz\",\n+      \"integrity\": \"sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"object-inspect\": \"^1.13.4\",\n+        \"side-channel-list\": \"^1.0.1\",\n+        \"side-channel-map\": \"^1.0.1\",\n+        \"side-channel-weakmap\": \"^1.0.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-list\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.1.tgz\",\n+      \"integrity\": \"sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"object-inspect\": \"^1.13.4\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-map\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-map/-/side-channel-map-1.0.1.tgz\",\n+      \"integrity\": \"sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bound\": \"^1.0.2\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.5\",\n+        \"object-inspect\": \"^1.13.3\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-weakmap\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-weakmap/-/side-channel-weakmap-1.0.2.tgz\",\n+      \"integrity\": \"sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bound\": \"^1.0.2\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.5\",\n+        \"object-inspect\": \"^1.13.3\",\n+        \"side-channel-map\": \"^1.0.1\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/sshpk\": {\n       \"version\": \"1.18.0\",\n       \"resolved\": \"https://registry.npmjs.org/sshpk/-/sshpk-1.18.0.tgz\",\n--- a/package.json\n+++ b/package.json\n@@ -14,5 +14,8 @@\n   \"dependencies\": {\n     \"lodash\": \"4.18.1\",\n     \"request\": \"2.88.2\"\n+  },\n+  \"overrides\": {\n+    \"qs\": \"6.16.0\"\n   }\n }\n",
+        "resolved": [
+          {
+            "rule_id": "CVE-2025-15284",
+            "package": "qs"
+          },
+          {
+            "rule_id": "CVE-2026-82417",
+            "package": "qs"
+          }
+        ],
+        "remaining": [],
+        "introduced": [],
+        "scan_db_updated_at": "2026-10-13T06:41:11.035783622Z",
+        "method": "override",
+        "candidates": [
+          {
+            "package": "qs",
+            "target": "6.16.0",
+            "method": "override"
+          }
+        ],
+        "files": [
+          "package-lock.json",
+          "package.json"
+        ]
+      }
+    },
+    {
+      "package": "request",
+      "installed": "2.88.2",
+      "finding_ids": [
+        "CVE-2023-28155"
+      ],
+      "status": "manual_intervention",
+      "reason": "ни одну находку нельзя закрыть обновлением",
+      "target": null,
+      "major_change": false,
+      "needs_review": false,
+      "plan": {
+        "status": "MANUAL",
+        "target": null,
+        "major_change": false,
+        "resolves": [],
+        "manual": [
+          [
+            "CVE-2023-28155",
+            "исправленной версии нет"
+          ]
+        ],
+        "reason": "ни одну находку нельзя закрыть обновлением"
+      },
+      "verification": null
+    },
+    {
+      "package": "tough-cookie",
+      "installed": "2.5.0",
+      "finding_ids": [
+        "CVE-2023-26136"
+      ],
+      "status": "fix_passed_verification",
+      "reason": "Тесты, сборка и запуск прошли; все 1 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено. Обновление меняет мажорную версию: перед применением нужен просмотр человеком.",
+      "target": "4.1.3",
+      "major_change": true,
+      "needs_review": true,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "4.1.3",
+        "major_change": true,
+        "resolves": [
+          "CVE-2023-26136"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "FIX_VERIFIED",
+        "reason": "Тесты, сборка и запуск прошли; все 1 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+        "failed_step": null,
+        "steps": [
+          {
+            "name": "docker",
+            "status": "passed",
+            "seconds": 0.1,
+            "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: runc io.containerd.runc.v2\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+          },
+          {
+            "name": "install",
+            "status": "passed",
+            "seconds": 3.0,
+            "log_tail": "npm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated har-validator@5.1.5: this library is no longer supported\n\nadded 52 packages in 2s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+          },
+          {
+            "name": "tests",
+            "status": "passed",
+            "seconds": 2.2,
+            "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (3.648166ms)\n✔ request library loads (289.162875ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1050.743208"
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "seconds": 0.2,
+            "log_tail": "sha256:989b15d4a1a81193730ef6c9a9702f0888594889c515c7dfa718044cdd115175"
+          },
+          {
+            "name": "start",
+            "status": "passed",
+            "seconds": 0.3,
+            "log_tail": "22a903553823206ac150d1bf3d159c30b539a1e5687c25546a5ea3e166e80485"
+          },
+          {
+            "name": "health",
+            "status": "passed",
+            "seconds": 0.7,
+            "log_tail": ""
+          },
+          {
+            "name": "save",
+            "status": "passed",
+            "seconds": 0.5,
+            "log_tail": ""
+          },
+          {
+            "name": "rescan",
+            "status": "passed",
+            "seconds": 0.3,
+            "log_tail": ""
+          }
+        ],
+        "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -351,6 +351,12 @@\n       \"engines\": {\n         \"node\": \">=0.6\"\n       }\n+    },\n+    \"node_modules/querystringify\": {\n+      \"version\": \"2.2.0\",\n+      \"resolved\": \"https://registry.npmjs.org/querystringify/-/querystringify-2.2.0.tgz\",\n+      \"integrity\": \"sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ==\",\n+      \"license\": \"MIT\"\n     },\n     \"node_modules/request\": {\n       \"version\": \"2.88.2\",\n@@ -384,6 +390,12 @@\n         \"node\": \">= 6\"\n       }\n     },\n+    \"node_modules/requires-port\": {\n+      \"version\": \"1.0.0\",\n+      \"resolved\": \"https://registry.npmjs.org/requires-port/-/requires-port-1.0.0.tgz\",\n+      \"integrity\": \"sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==\",\n+      \"license\": \"MIT\"\n+    },\n     \"node_modules/safe-buffer\": {\n       \"version\": \"5.2.1\",\n       \"resolved\": \"https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz\",\n@@ -436,16 +448,18 @@\n       }\n     },\n     \"node_modules/tough-cookie\": {\n-      \"version\": \"2.5.0\",\n-      \"resolved\": \"https://registry.npmjs.org/tough-cookie/-/tough-cookie-2.5.0.tgz\",\n-      \"integrity\": \"sha512-nlLsUzgm1kfLXSXfRZMc1KLAugd4hqJHDTvc2hDIwS3mZAfMEuMbc03SujMF+GEcpaX/qboeycw6iO8JwVv2+g==\",\n+      \"version\": \"4.1.3\",\n+      \"resolved\": \"https://registry.npmjs.org/tough-cookie/-/tough-cookie-4.1.3.tgz\",\n+      \"integrity\": \"sha512-aX/y5pVRkfRnfmuX+OdbSdXvPe6ieKX/G2s7e98f4poJHnqH3281gDPm/metm6E/WRamfx7WC4HUqkWHfQHprw==\",\n       \"license\": \"BSD-3-Clause\",\n       \"dependencies\": {\n-        \"psl\": \"^1.1.28\",\n-        \"punycode\": \"^2.1.1\"\n-      },\n-      \"engines\": {\n-        \"node\": \">=0.8\"\n+        \"psl\": \"^1.1.33\",\n+        \"punycode\": \"^2.1.1\",\n+        \"universalify\": \"^0.2.0\",\n+        \"url-parse\": \"^1.5.3\"\n+      },\n+      \"engines\": {\n+        \"node\": \">=6\"\n       }\n     },\n     \"node_modules/tunnel-agent\": {\n@@ -466,6 +480,15 @@\n       \"integrity\": \"sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==\",\n       \"license\": \"Unlicense\"\n     },\n+    \"node_modules/universalify\": {\n+      \"version\": \"0.2.0\",\n+      \"resolved\": \"https://registry.npmjs.org/universalify/-/universalify-0.2.0.tgz\",\n+      \"integrity\": \"sha512-CJ1QgKmNg3CwvAv/kOFmtnEN05f0D/cn9QntgNOQlQF9dgvVTHj3t+8JPdjqawCHk7V/KA+fbUqzZ9XWhcqPUg==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 4.0.0\"\n+      }\n+    },\n     \"node_modules/uri-js\": {\n       \"version\": \"4.4.1\",\n       \"resolved\": \"https://registry.npmjs.org/uri-js/-/uri-js-4.4.1.tgz\",\n@@ -473,6 +496,16 @@\n       \"license\": \"BSD-2-Clause\",\n       \"dependencies\": {\n         \"punycode\": \"^2.1.0\"\n+      }\n+    },\n+    \"node_modules/url-parse\": {\n+      \"version\": \"1.5.10\",\n+      \"resolved\": \"https://registry.npmjs.org/url-parse/-/url-parse-1.5.10.tgz\",\n+      \"integrity\": \"sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"querystringify\": \"^2.1.1\",\n+        \"requires-port\": \"^1.0.0\"\n       }\n     },\n     \"node_modules/uuid\": {\n--- a/package.json\n+++ b/package.json\n@@ -14,5 +14,8 @@\n   \"dependencies\": {\n     \"lodash\": \"4.18.1\",\n     \"request\": \"2.88.2\"\n+  },\n+  \"overrides\": {\n+    \"tough-cookie\": \"4.1.3\"\n   }\n }\n",
+        "resolved": [
+          {
+            "rule_id": "CVE-2023-26136",
+            "package": "tough-cookie"
+          }
+        ],
+        "remaining": [],
+        "introduced": [],
+        "scan_db_updated_at": "2026-10-13T06:41:11.035783622Z",
+        "method": "override",
+        "candidates": [
+          {
+            "package": "tough-cookie",
+            "target": "4.1.3",
+            "method": "override"
+          }
+        ],
+        "files": [
+          "package-lock.json",
+          "package.json"
+        ]
+      }
+    },
+    {
+      "package": "uuid",
+      "installed": "3.4.0",
+      "finding_ids": [
+        "CVE-2026-41907"
+      ],
+      "status": "manual_intervention",
+      "reason": "обновление ломает приложение: Шаг «тесты» завершился с ошибкой после обновления (код 1). Тесты шли без сети и до обновления не запускались: причина может быть и в самих тестах.",
+      "target": "11.1.1",
+      "major_change": true,
+      "needs_review": false,
+      "plan": {
+        "status": "PROPOSE",
+        "target": "11.1.1",
+        "major_change": true,
+        "resolves": [
+          "CVE-2026-41907"
+        ],
+        "manual": [],
+        "reason": null
+      },
+      "verification": {
+        "outcome": "BREAKS_APP",
+        "reason": "Шаг «тесты» завершился с ошибкой после обновления (код 1). Тесты шли без сети и до обновления не запускались: причина может быть и в самих тестах.",
+        "failed_step": "tests",
+        "steps": [
+          {
+            "name": "docker",
+            "status": "passed",
+            "seconds": 0.1,
+            "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: runc io.containerd.runc.v2\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+          },
+          {
+            "name": "install",
+            "status": "passed",
+            "seconds": 2.1,
+            "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 48 packages in 1s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+          },
+          {
+            "name": "tests",
+            "status": "failed",
+            "seconds": 2.2,
+            "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (3.663208ms)\n✖ request library loads (262.136417ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1043.985209\n\n✖ failing tests:\n\ntest at test/request.test.js:4:1\n✖ request library loads (262.136417ms)\n  Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: Package subpath './v4' is not defined by \"exports\" in /work/node_modules/uuid/package.json\n      at exportsNotFound (node:internal/modules/esm/resolve:315:10)\n      at packageExportsResolve (node:internal/modules/esm/resolve:663:9)\n      at resolveExports (node:internal/modules/cjs/loader:754:36)\n      at Module._findPath (node:internal/modules/cjs/loader:821:31)\n      at Module._resolveFilename (node:internal/modules/cjs/loader:1557:27)\n      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\n      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)\n      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)\n      at Module._load (node:internal/modules/cjs/loader:1341:5)\n      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19) {\n    code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'\n  }"
+          }
+        ],
+        "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -476,13 +476,16 @@\n       }\n     },\n     \"node_modules/uuid\": {\n-      \"version\": \"3.4.0\",\n-      \"resolved\": \"https://registry.npmjs.org/uuid/-/uuid-3.4.0.tgz\",\n-      \"integrity\": \"sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==\",\n-      \"deprecated\": \"uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\",\n+      \"version\": \"11.1.1\",\n+      \"resolved\": \"https://registry.npmjs.org/uuid/-/uuid-11.1.1.tgz\",\n+      \"integrity\": \"sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==\",\n+      \"funding\": [\n+        \"https://github.com/sponsors/broofa\",\n+        \"https://github.com/sponsors/ctavan\"\n+      ],\n       \"license\": \"MIT\",\n       \"bin\": {\n-        \"uuid\": \"bin/uuid\"\n+        \"uuid\": \"dist/esm/bin/uuid\"\n       }\n     },\n     \"node_modules/verror\": {\n--- a/package.json\n+++ b/package.json\n@@ -14,5 +14,8 @@\n   \"dependencies\": {\n     \"lodash\": \"4.18.1\",\n     \"request\": \"2.88.2\"\n+  },\n+  \"overrides\": {\n+    \"uuid\": \"11.1.1\"\n   }\n }\n",
+        "resolved": [],
+        "remaining": [],
+        "introduced": [],
+        "scan_db_updated_at": null,
+        "method": "override",
+        "candidates": [
+          {
+            "package": "uuid",
+            "target": "11.1.1",
+            "method": "override"
+          }
+        ],
+        "files": []
+      }
+    }
+  ],
+  "other": [
+    {
+      "origin": "base-tooling",
+      "status": "manual_intervention",
+      "reason": "пакет относится к инструментам базового образа, а не к зависимостям приложения",
+      "count": 21
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "исправление есть в обновлённом пакете ОС: обновите базовый образ",
+      "count": 13
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "исправления для пакета ОС пока нет",
+      "count": 171
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "мейнтейнеры дистрибутива не будут исправлять эту проблему",
+      "count": 14
+    },
+    {
+      "origin": "os",
+      "status": "manual_intervention",
+      "reason": "мейнтейнеры дистрибутива отложили исправление",
+      "count": 37
+    }
+  ],
+  "summary": {
+    "packages": 5,
+    "fix_passed_verification": 3,
+    "fix_proposed": 0,
+    "manual_intervention": 2,
+    "needs_review": 1,
+    "combined_outcome": "FIX_VERIFIED"
+  },
+  "combined": {
+    "packages": [
+      "form-data",
+      "qs"
+    ],
+    "outcome": "FIX_VERIFIED",
+    "reason": "Тесты, сборка и запуск прошли; все 4 целевых находок исчезли после повторного скана. Образ пересобран локально и не опубликован: приложение в эксплуатации не исправлено.",
+    "failed_step": null,
+    "steps": [
+      {
+        "name": "docker",
+        "status": "passed",
+        "seconds": 0.1,
+        "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: runc io.containerd.runc.v2\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+      },
+      {
+        "name": "install",
+        "status": "passed",
+        "seconds": 3.1,
+        "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 68 packages in 2s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+      },
+      {
+        "name": "tests",
+        "status": "passed",
+        "seconds": 2.2,
+        "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (4.093708ms)\n✔ request library loads (283.114125ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1074.668709"
+      },
+      {
+        "name": "build",
+        "status": "passed",
+        "seconds": 0.2,
+        "log_tail": "sha256:3da12db1b51557a1a4b2576a94605005471df0a2154a58a9c092f427aeffefa7"
+      },
+      {
+        "name": "start",
+        "status": "passed",
+        "seconds": 0.3,
+        "log_tail": "e112b185200b74893ed2a3771b2810a135bc29658c88b16c0f7d49af1d3ec3a4"
+      },
+      {
+        "name": "health",
+        "status": "passed",
+        "seconds": 0.8,
+        "log_tail": ""
+      },
+      {
+        "name": "save",
+        "status": "passed",
+        "seconds": 0.6,
+        "log_tail": ""
+      },
+      {
+        "name": "rescan",
+        "status": "passed",
+        "seconds": 0.7,
+        "log_tail": ""
+      }
+    ],
+    "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -77,6 +77,35 @@\n         \"tweetnacl\": \"^0.14.3\"\n       }\n     },\n+    \"node_modules/call-bind-apply-helpers\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz\",\n+      \"integrity\": \"sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/call-bound\": {\n+      \"version\": \"1.0.4\",\n+      \"resolved\": \"https://registry.npmjs.org/call-bound/-/call-bound-1.0.4.tgz\",\n+      \"integrity\": \"sha512-+ys997U96po4Kx/ABpBCqhA9EuxJaQWDQg7295H4hBphv3IZg0boBKuwYpt4YXp6MZ5AmZQnU/tyMTlRpaSejg==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.2\",\n+        \"get-intrinsic\": \"^1.3.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/caseless\": {\n       \"version\": \"0.12.0\",\n       \"resolved\": \"https://registry.npmjs.org/caseless/-/caseless-0.12.0.tgz\",\n@@ -122,6 +151,20 @@\n         \"node\": \">=0.4.0\"\n       }\n     },\n+    \"node_modules/dunder-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"gopd\": \"^1.2.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/ecc-jsbn\": {\n       \"version\": \"0.1.2\",\n       \"resolved\": \"https://registry.npmjs.org/ecc-jsbn/-/ecc-jsbn-0.1.2.tgz\",\n@@ -130,6 +173,51 @@\n       \"dependencies\": {\n         \"jsbn\": \"~0.1.0\",\n         \"safer-buffer\": \"^2.1.0\"\n+      }\n+    },\n+    \"node_modules/es-define-property\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz\",\n+      \"integrity\": \"sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-errors\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz\",\n+      \"integrity\": \"sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-object-atoms\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz\",\n+      \"integrity\": \"sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n+    \"node_modules/es-set-tostringtag\": {\n+      \"version\": \"2.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz\",\n+      \"integrity\": \"sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.6\",\n+        \"has-tostringtag\": \"^1.0.2\",\n+        \"hasown\": \"^2.0.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n       }\n     },\n     \"node_modules/extend\": {\n@@ -169,17 +257,66 @@\n       }\n     },\n     \"node_modules/form-data\": {\n-      \"version\": \"2.3.3\",\n-      \"resolved\": \"https://registry.npmjs.org/form-data/-/form-data-2.3.3.tgz\",\n-      \"integrity\": \"sha512-1lLKB2Mu3aGP1Q/2eCOx0fNbRMe7XdwktwOruhfqqd0rIJWwN4Dh+E3hrPSlDCXnSR7UtZ1N38rVXm+6+MEhJQ==\",\n+      \"version\": \"2.5.6\",\n+      \"resolved\": \"https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz\",\n+      \"integrity\": \"sha512-Ogz/E85h9tlfJzpI6TuFpGcHZFhLrb9Gw8wq9v40CxSCPnv7ahKr6Xgtkn0KYCDQJ8DNn5VoMO8EXr9V5PadyA==\",\n       \"license\": \"MIT\",\n       \"dependencies\": {\n         \"asynckit\": \"^0.4.0\",\n-        \"combined-stream\": \"^1.0.6\",\n-        \"mime-types\": \"^2.1.12\"\n+        \"combined-stream\": \"^1.0.8\",\n+        \"es-set-tostringtag\": \"^2.1.0\",\n+        \"hasown\": \"^2.0.4\",\n+        \"mime-types\": \"^2.1.35\",\n+        \"safe-buffer\": \"^5.2.1\"\n       },\n       \"engines\": {\n         \"node\": \">= 0.12\"\n+      }\n+    },\n+    \"node_modules/function-bind\": {\n+      \"version\": \"1.1.2\",\n+      \"resolved\": \"https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz\",\n+      \"integrity\": \"sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==\",\n+      \"license\": \"MIT\",\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-intrinsic\": {\n+      \"version\": \"1.3.0\",\n+      \"resolved\": \"https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz\",\n+      \"integrity\": \"sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bind-apply-helpers\": \"^1.0.2\",\n+        \"es-define-property\": \"^1.0.1\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"es-object-atoms\": \"^1.1.1\",\n+        \"function-bind\": \"^1.1.2\",\n+        \"get-proto\": \"^1.0.1\",\n+        \"gopd\": \"^1.2.0\",\n+        \"has-symbols\": \"^1.1.0\",\n+        \"hasown\": \"^2.0.2\",\n+        \"math-intrinsics\": \"^1.1.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/get-proto\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz\",\n+      \"integrity\": \"sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"dunder-proto\": \"^1.0.1\",\n+        \"es-object-atoms\": \"^1.0.0\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n       }\n     },\n     \"node_modules/getpass\": {\n@@ -189,6 +326,18 @@\n       \"license\": \"MIT\",\n       \"dependencies\": {\n         \"assert-plus\": \"^1.0.0\"\n+      }\n+    },\n+    \"node_modules/gopd\": {\n+      \"version\": \"1.2.0\",\n+      \"resolved\": \"https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz\",\n+      \"integrity\": \"sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n       }\n     },\n     \"node_modules/har-schema\": {\n@@ -214,6 +363,45 @@\n         \"node\": \">=6\"\n       }\n     },\n+    \"node_modules/has-symbols\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz\",\n+      \"integrity\": \"sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/has-tostringtag\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz\",\n+      \"integrity\": \"sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"has-symbols\": \"^1.0.3\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/hasown\": {\n+      \"version\": \"2.0.4\",\n+      \"resolved\": \"https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz\",\n+      \"integrity\": \"sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"function-bind\": \"^1.1.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/http-signature\": {\n       \"version\": \"1.2.0\",\n       \"resolved\": \"https://registry.npmjs.org/http-signature/-/http-signature-1.2.0.tgz\",\n@@ -286,6 +474,15 @@\n       \"integrity\": \"sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==\",\n       \"license\": \"MIT\"\n     },\n+    \"node_modules/math-intrinsics\": {\n+      \"version\": \"1.1.0\",\n+      \"resolved\": \"https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz\",\n+      \"integrity\": \"sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      }\n+    },\n     \"node_modules/mime-db\": {\n       \"version\": \"1.52.0\",\n       \"resolved\": \"https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz\",\n@@ -316,6 +513,18 @@\n         \"node\": \"*\"\n       }\n     },\n+    \"node_modules/object-inspect\": {\n+      \"version\": \"1.13.4\",\n+      \"resolved\": \"https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.4.tgz\",\n+      \"integrity\": \"sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==\",\n+      \"license\": \"MIT\",\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/performance-now\": {\n       \"version\": \"2.1.0\",\n       \"resolved\": \"https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz\",\n@@ -344,12 +553,19 @@\n       }\n     },\n     \"node_modules/qs\": {\n-      \"version\": \"6.5.5\",\n-      \"resolved\": \"https://registry.npmjs.org/qs/-/qs-6.5.5.tgz\",\n-      \"integrity\": \"sha512-mzR4sElr1bfCaPJe7m8ilJ6ZXdDaGoObcYR0ZHSsktM/Lt21MVHj5De30GQH2eiZ1qGRTO7LCAzQsUeXTNexWQ==\",\n+      \"version\": \"6.16.0\",\n+      \"resolved\": \"https://registry.npmjs.org/qs/-/qs-6.16.0.tgz\",\n+      \"integrity\": \"sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==\",\n       \"license\": \"BSD-3-Clause\",\n+      \"dependencies\": {\n+        \"es-define-property\": \"^1.0.1\",\n+        \"side-channel\": \"^1.1.1\"\n+      },\n       \"engines\": {\n         \"node\": \">=0.6\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n       }\n     },\n     \"node_modules/request\": {\n@@ -410,6 +626,78 @@\n       \"integrity\": \"sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==\",\n       \"license\": \"MIT\"\n     },\n+    \"node_modules/side-channel\": {\n+      \"version\": \"1.1.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel/-/side-channel-1.1.1.tgz\",\n+      \"integrity\": \"sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"object-inspect\": \"^1.13.4\",\n+        \"side-channel-list\": \"^1.0.1\",\n+        \"side-channel-map\": \"^1.0.1\",\n+        \"side-channel-weakmap\": \"^1.0.2\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-list\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.1.tgz\",\n+      \"integrity\": \"sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"es-errors\": \"^1.3.0\",\n+        \"object-inspect\": \"^1.13.4\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-map\": {\n+      \"version\": \"1.0.1\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-map/-/side-channel-map-1.0.1.tgz\",\n+      \"integrity\": \"sha512-VCjCNfgMsby3tTdo02nbjtM/ewra6jPHmpThenkTYh8pG9ucZ/1P8So4u4FGBek/BjpOVsDCMoLA/iuBKIFXRA==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bound\": \"^1.0.2\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.5\",\n+        \"object-inspect\": \"^1.13.3\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n+    \"node_modules/side-channel-weakmap\": {\n+      \"version\": \"1.0.2\",\n+      \"resolved\": \"https://registry.npmjs.org/side-channel-weakmap/-/side-channel-weakmap-1.0.2.tgz\",\n+      \"integrity\": \"sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A==\",\n+      \"license\": \"MIT\",\n+      \"dependencies\": {\n+        \"call-bound\": \"^1.0.2\",\n+        \"es-errors\": \"^1.3.0\",\n+        \"get-intrinsic\": \"^1.2.5\",\n+        \"object-inspect\": \"^1.13.3\",\n+        \"side-channel-map\": \"^1.0.1\"\n+      },\n+      \"engines\": {\n+        \"node\": \">= 0.4\"\n+      },\n+      \"funding\": {\n+        \"url\": \"https://github.com/sponsors/ljharb\"\n+      }\n+    },\n     \"node_modules/sshpk\": {\n       \"version\": \"1.18.0\",\n       \"resolved\": \"https://registry.npmjs.org/sshpk/-/sshpk-1.18.0.tgz\",\n--- a/package.json\n+++ b/package.json\n@@ -14,5 +14,9 @@\n   \"dependencies\": {\n     \"lodash\": \"4.18.1\",\n     \"request\": \"2.88.2\"\n+  },\n+  \"overrides\": {\n+    \"form-data\": \"2.5.6\",\n+    \"qs\": \"6.16.0\"\n   }\n }\n",
+    "resolved": [
+      {
+        "rule_id": "CVE-2025-15284",
+        "package": "qs"
+      },
+      {
+        "rule_id": "CVE-2025-7783",
+        "package": "form-data"
+      },
+      {
+        "rule_id": "CVE-2026-12143",
+        "package": "form-data"
+      },
+      {
+        "rule_id": "CVE-2026-82417",
+        "package": "qs"
+      }
+    ],
+    "remaining": [],
+    "introduced": [],
+    "scan_db_updated_at": "2026-10-13T06:41:11.035783622Z",
+    "method": "override",
+    "candidates": [
+      {
+        "package": "form-data",
+        "target": "2.5.6",
+        "method": "override"
+      },
+      {
+        "package": "qs",
+        "target": "6.16.0",
+        "method": "override"
+      }
+    ],
+    "files": [
+      "package-lock.json",
+      "package.json"
+    ]
+  }
+}

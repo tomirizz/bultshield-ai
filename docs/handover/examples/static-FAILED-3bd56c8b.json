@@ -1,0 +1,211 @@
+{
+ "check": {
+  "id": "3bd56c8b-3b92-496a-a9d0-80fbca742822",
+  "kind": "static",
+  "status": "FAILED",
+  "error_code": "SCANNER_FAILED",
+  "error_message": "Неполная проверка: gitleaks, semgrep. Результаты успешных сканеров сохранены.",
+  "created_at": "2026-10-13T08:33:58.368758+00:00",
+  "completed_at": "2026-10-13T08:34:02.399315+00:00"
+ },
+ "subject": {
+  "repository_id": "72706e3e-b306-4bfb-bb4b-eafbcb07f1d3",
+  "commit_sha": "cde718910cf0c6398c7c083b51851da00e8843fb",
+  "requested_commit": "cde718910cf0c6398c7c083b51851da00e8843fb",
+  "trigger": "api",
+  "watched": false,
+  "image": null,
+  "image_digest": null
+ },
+ "verdict": {
+  "result": "INCOMPLETE",
+  "statement": "Проверка выполнена не полностью. Отсутствие находок в этом отчёте не означает отсутствие уязвимостей."
+ },
+ "facts": {
+  "scanners": {
+   "trivy": {
+    "scope": "supported_manifests_and_configurations",
+    "checks": "embedded",
+    "status": "COMPLETED",
+    "version": "0.74.0",
+    "input_files": 3,
+    "result_files": 2,
+    "covered_files": [
+     "Dockerfile",
+     "package-lock.json"
+    ],
+    "db_updated_at": "2026-10-13T06:41:11.035783622Z",
+    "finding_count": 4,
+    "source_redacted": true,
+    "duration_seconds": 1.688,
+    "raw_category_counts": {
+     "dependency": 3,
+     "configuration": 1
+    }
+   },
+   "semgrep": {
+    "error": "Semgrep не установлен в worker.",
+    "status": "FAILED",
+    "error_code": "SCANNER_FAILED",
+    "duration_seconds": 0.0
+   },
+   "gitleaks": {
+    "error": "Gitleaks не установлен в worker.",
+    "status": "FAILED",
+    "error_code": "SCANNER_FAILED",
+    "duration_seconds": 0.0
+   }
+  },
+  "total_findings": 4,
+  "by_severity": {
+   "MEDIUM": 3,
+   "LOW": 1
+  },
+  "by_origin": {},
+  "by_status": {
+   "FOUND": 3,
+   "MANUAL_REVIEW": 1
+  }
+ },
+ "findings": {
+  "items": [
+   {
+    "id": "9ba827f9-75ce-4a13-9f7c-e61bf03b521e",
+    "title": "CVE-2023-26136: tough-cookie",
+    "rule_id": "CVE-2023-26136",
+    "cve": "CVE-2023-26136",
+    "severity": "MEDIUM",
+    "risk_score": 45,
+    "priority": "P2",
+    "component": "tough-cookie",
+    "file": "package-lock.json",
+    "installed_version": "2.5.0",
+    "fixed_version": "4.1.3",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "1c4ca975-d49a-4a4b-a9e1-8626943b7d3c",
+    "title": "CVE-2026-41907: uuid",
+    "rule_id": "CVE-2026-41907",
+    "cve": "CVE-2026-41907",
+    "severity": "MEDIUM",
+    "risk_score": 41,
+    "priority": "P2",
+    "component": "uuid",
+    "file": "package-lock.json",
+    "installed_version": "3.4.0",
+    "fixed_version": "11.1.1, 12.0.1, 13.0.1",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "8dc70608-6973-44d8-b75d-771c557cedb5",
+    "title": "CVE-2023-28155: request",
+    "rule_id": "CVE-2023-28155",
+    "cve": "CVE-2023-28155",
+    "severity": "MEDIUM",
+    "risk_score": 39,
+    "priority": "P2",
+    "component": "request",
+    "file": "package-lock.json",
+    "installed_version": "2.88.2",
+    "fixed_version": null,
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "MANUAL_REVIEW",
+    "status_text": "Требуется ручное вмешательство",
+    "status_reason": "исправленной версии нет",
+    "manual_reason": "исправленной версии нет",
+    "fix": null
+   },
+   {
+    "id": "ebd3ff22-1525-42fa-a289-3681de14134a",
+    "title": "Dockerfile: отсутствует HEALTHCHECK",
+    "rule_id": "DS-0026",
+    "cve": null,
+    "severity": "LOW",
+    "risk_score": 10,
+    "priority": "P4",
+    "component": "Dockerfile",
+    "file": "Dockerfile",
+    "installed_version": null,
+    "fixed_version": null,
+    "scanner": "trivy",
+    "category": "configuration",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   }
+  ],
+  "limit": 500,
+  "offset": 0,
+  "total": 4
+ },
+ "changes_since_previous": null,
+ "fix_run": null,
+ "deployment": null,
+ "assumptions": [],
+ "llm": {
+  "status": "NOT_RUN",
+  "message": "Пояснения модели не запрашивались.",
+  "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+  "explained": 0,
+  "failed": 0,
+  "provider": null,
+  "model": null,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "failures": [],
+  "job": null
+ },
+ "proposed_actions": [
+  {
+   "finding_id": "9ba827f9-75ce-4a13-9f7c-e61bf03b521e",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "1c4ca975-d49a-4a4b-a9e1-8626943b7d3c",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "8dc70608-6973-44d8-b75d-771c557cedb5",
+   "action": "manual_review",
+   "detail": "исправленной версии нет"
+  },
+  {
+   "finding_id": "ebd3ff22-1525-42fa-a289-3681de14134a",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  }
+ ],
+ "limitations": [
+  "Исправления проверяются только в изолированной копии. Статус «применено к приложению» ставится, только если PR слит, образ собран после слияния и повторный скан нового образа больше не видит находку, а пакет в нём виден. Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.",
+  "Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.",
+  "Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.",
+  "Пояснения языковой модели — предположения: они не проверялись сканерами и не влияют на статусы."
+ ]
+}

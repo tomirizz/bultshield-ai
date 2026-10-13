@@ -1,0 +1,46 @@
+F401 [*] `app.config.get_settings` imported but unused
+ --> backend/tests/test_llm_change.py:7:24
+  |
+5 | import pytest
+6 | from app import llm_change
+7 | from app.config import get_settings
+  |                        ^^^^^^^^^^^^
+8 | from app.github_pr import FixSet, build_pr_body
+9 | from app.llm import FakeProvider
+  |
+help: Remove unused import: `app.config.get_settings`
+  |
+6 | from app import llm_change
+  - from app.config import get_settings
+7 | from app.github_pr import FixSet, build_pr_body
+  |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> backend/tests/test_llm_jobs.py:225:5
+    |
+224 |   def test_script_waits_for_the_job_and_prints_the_result(check, monkeypatch):
+225 | /     import subprocess
+226 | |     import sys
+227 | |     import threading
+228 | |     from http.server import BaseHTTPRequestHandler, HTTPServer
+229 | |     from pathlib import Path
+230 | |
+231 | |     import json
+    | |_______________^
+232 |
+233 |       steps = []
+    |
+help: Organize imports
+    |
+224 | def test_script_waits_for_the_job_and_prints_the_result(check, monkeypatch):
+225 +     import json
+226 |     import subprocess
+--------------------------------------------------------------------------------
+230 |     from pathlib import Path
+    -
+    -     import json
+231 |
+    |
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.

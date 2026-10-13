@@ -1,0 +1,66 @@
+$ python scripts/run_sandbox.py ~/projects/sandbox-trial uuid 11.1.1 ~/projects/image-scans/no-fix.json
+ИТОГ: BREAKS_APP
+Шаг «тесты» завершился с ошибкой после обновления (код 1). Тесты шли без сети и до обновления не запускались: причина может быть и в самих тестах.
+Способ обновления: поле overrides в package.json (транзитивная зависимость)
+
+Шаги:
+  docker   passed      0.6 c
+  install  passed      2.3 c
+  tests    failed      2.2 c
+
+Конец лога шага «tests»:
+> bultshield-demo-app@1.0.0 test
+> node --test
+
+✔ summarize computes count, sum and mean (16.799875ms)
+✖ request library loads (266.40575ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1064.990876
+
+✖ failing tests:
+
+test at test/request.test.js:4:1
+✖ request library loads (266.40575ms)
+  Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: Package subpath './v4' is not defined by "exports" in /work/node_modules/uuid/package.json
+      at exportsNotFound (node:internal/modules/esm/resolve:315:10)
+      at packageExportsResolve (node:internal/modules/esm/resolve:663:9)
+      at resolveExports (node:internal/modules/cjs/loader:754:36)
+      at Module._findPath (node:internal/modules/cjs/loader:821:31)
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1557:27)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19) {
+    code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'
+  }
+
+Закрыто: нет
+
+Осталось: нет
+
+Новые: нет
+
+Diff (кратко):
+-      "version": "3.4.0",
+-      "resolved": "https://registry.npmjs.org/uuid/-/uuid-3.4.0.tgz",
+-      "integrity": "sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==",
+-      "deprecated": "uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).",
++      "version": "11.1.1",
++      "resolved": "https://registry.npmjs.org/uuid/-/uuid-11.1.1.tgz",
++      "integrity": "sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==",
++      "funding": [
++        "https://github.com/sponsors/broofa",
++        "https://github.com/sponsors/ctavan"
++      ],
+-        "uuid": "bin/uuid"
++        "uuid": "dist/esm/bin/uuid"
++  },
++  "overrides": {
++    "uuid": "11.1.1"

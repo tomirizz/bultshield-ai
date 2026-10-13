@@ -1,0 +1,38 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_image_revision_survives_worker_storage_and_report[abc123abc123abc123abc123abc123abc123abcd] _
+
+client = <starlette.testclient.TestClient object at 0x10a929970>
+db = <sqlalchemy.orm.session.Session object at 0x10a998470>, worker_db = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a80f0e0>
+revision = 'abc123abc123abc123abc123abc123abc123abcd'
+
+    @pytest.mark.parametrize('revision', [None, 'abc123' * 6 + 'abcd'])
+    def test_image_revision_survives_worker_storage_and_report(client, db, worker_db, monkeypatch, revision):
+        scan = create_image_scan(db, repository(client), REFERENCE)
+        payload = json.loads(FIXTURE.read_text())
+        labels = {} if revision is None else {'org.opencontainers.image.revision': revision}
+        payload['Metadata'].setdefault('ImageConfig', {})['config'] = {'Labels': labels}
+        result = ImageScanResult(REFERENCE, DIGEST, 'linux/amd64', '2026-10-06T07:04:23Z', parse_image_report(payload))
+        monkeypatch.setattr(image_pipeline, 'run_image_scan', lambda reference: result)
+        worker.process_job(worker.claim_job())
+        report = client.get(f'/api/checks/{scan.id}/report').json()
+>       assert report['subject']['commit_sha'] == revision
+E       AssertionError: assert None == 'abc123abc123abc123abc123abc123abc123abcd'
+
+backend/tests/test_image_jobs.py:64: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"event": "scan_started", "scan_id": "0f97fffe-36a8-4694-a6b2-9591b84de195", "job_id": "7a465638-d193-4565-8322-061819abae1a"}
+{"event": "step_started", "scan_id": "0f97fffe-36a8-4694-a6b2-9591b84de195", "job_id": "7a465638-d193-4565-8322-061819abae1a", "step": "trivy"}
+{"event": "step_finished", "scan_id": "0f97fffe-36a8-4694-a6b2-9591b84de195", "job_id": "7a465638-d193-4565-8322-061819abae1a", "step": "trivy", "status": "COMPLETED", "duration_seconds": 0.0, "error_code": null, "error": null}
+{"event": "step_started", "scan_id": "0f97fffe-36a8-4694-a6b2-9591b84de195", "job_id": "7a465638-d193-4565-8322-061819abae1a", "step": "store"}
+{"event": "scan_finished", "scan_id": "0f97fffe-36a8-4694-a6b2-9591b84de195", "job_id": "7a465638-d193-4565-8322-061819abae1a", "status": "COMPLETED", "duration_seconds": 0.011}
+=============================== warnings summary ===============================
+../../../../opt/anaconda3/envs/bultshield/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /opt/anaconda3/envs/bultshield/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_image_jobs.py::test_image_revision_survives_worker_storage_and_report[abc123abc123abc123abc123abc123abc123abcd]
+1 failed, 1 passed, 5 deselected, 1 warning in 0.32s

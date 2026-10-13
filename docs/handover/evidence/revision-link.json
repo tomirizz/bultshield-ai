@@ -1,0 +1,10 @@
+{
+  "source": "read-only git snapshot of bultshield-training-app",
+  "commit_sha": "cde718910cf0c6398c7c083b51851da00e8843fb",
+  "local_image": "localhost:5001/bultshield-handover@sha256:727eae31d4351274db6c28287f2496809cb0e8311159a7301f08a0c257b809e8",
+  "scan_id": "539fa729-a9db-4c5b-b611-bbb54e4e7c08",
+  "status": "COMPLETED",
+  "findings": 265,
+  "published_to": "localhost:5001 only",
+  "github_changed": false
+}

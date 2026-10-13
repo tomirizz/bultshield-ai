@@ -1,0 +1,321 @@
+{
+ "check": {
+  "id": "4247ede4-bc9d-4ae0-86a0-0890a3608463",
+  "kind": "static",
+  "status": "FAILED",
+  "error_code": "SCANNER_FAILED",
+  "error_message": "Неполная проверка: gitleaks, semgrep. Результаты успешных сканеров сохранены.",
+  "created_at": "2026-10-13T08:32:27.253540+00:00",
+  "completed_at": "2026-10-13T08:33:03.231586+00:00"
+ },
+ "subject": {
+  "repository_id": "72706e3e-b306-4bfb-bb4b-eafbcb07f1d3",
+  "commit_sha": "aa7759883f250c81139e7f2a28bba00cf73c6246",
+  "requested_commit": "aa7759883f250c81139e7f2a28bba00cf73c6246",
+  "trigger": "api",
+  "watched": false,
+  "image": null,
+  "image_digest": null
+ },
+ "verdict": {
+  "result": "INCOMPLETE",
+  "statement": "Проверка выполнена не полностью. Отсутствие находок в этом отчёте не означает отсутствие уязвимостей."
+ },
+ "facts": {
+  "scanners": {
+   "trivy": {
+    "scope": "supported_manifests_and_configurations",
+    "checks": "embedded",
+    "status": "COMPLETED",
+    "version": "0.74.0",
+    "input_files": 3,
+    "result_files": 2,
+    "covered_files": [
+     "Dockerfile",
+     "package-lock.json"
+    ],
+    "db_updated_at": "2026-10-13T06:41:11.035783622Z",
+    "finding_count": 8,
+    "source_redacted": true,
+    "duration_seconds": 33.218,
+    "raw_category_counts": {
+     "dependency": 7,
+     "configuration": 1
+    }
+   },
+   "semgrep": {
+    "error": "Semgrep не установлен в worker.",
+    "status": "FAILED",
+    "error_code": "SCANNER_FAILED",
+    "duration_seconds": 0.0
+   },
+   "gitleaks": {
+    "error": "Gitleaks не установлен в worker.",
+    "status": "FAILED",
+    "error_code": "SCANNER_FAILED",
+    "duration_seconds": 0.001
+   }
+  },
+  "total_findings": 8,
+  "by_severity": {
+   "CRITICAL": 1,
+   "HIGH": 1,
+   "MEDIUM": 5,
+   "LOW": 1
+  },
+  "by_origin": {},
+  "by_status": {
+   "FOUND": 7,
+   "MANUAL_REVIEW": 1
+  }
+ },
+ "findings": {
+  "items": [
+   {
+    "id": "16690a38-e653-4551-aa4b-91260b2a7da8",
+    "title": "CVE-2025-7783: form-data",
+    "rule_id": "CVE-2025-7783",
+    "cve": "CVE-2025-7783",
+    "severity": "CRITICAL",
+    "risk_score": 73,
+    "priority": "P1",
+    "component": "form-data",
+    "file": "package-lock.json",
+    "installed_version": "2.3.3",
+    "fixed_version": "2.5.4, 3.0.4, 4.0.4",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "7082f708-e9eb-4e47-b911-d708dfd25a4c",
+    "title": "CVE-2026-12143: form-data",
+    "rule_id": "CVE-2026-12143",
+    "cve": "CVE-2026-12143",
+    "severity": "HIGH",
+    "risk_score": 61,
+    "priority": "P1",
+    "component": "form-data",
+    "file": "package-lock.json",
+    "installed_version": "2.3.3",
+    "fixed_version": "2.5.6, 3.0.5, 4.0.6",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "b6299afb-3803-4708-97bf-5783ffc84838",
+    "title": "CVE-2023-26136: tough-cookie",
+    "rule_id": "CVE-2023-26136",
+    "cve": "CVE-2023-26136",
+    "severity": "MEDIUM",
+    "risk_score": 45,
+    "priority": "P2",
+    "component": "tough-cookie",
+    "file": "package-lock.json",
+    "installed_version": "2.5.0",
+    "fixed_version": "4.1.3",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "62124c96-0507-4ddb-a6e9-adc1a4f5b780",
+    "title": "CVE-2026-41907: uuid",
+    "rule_id": "CVE-2026-41907",
+    "cve": "CVE-2026-41907",
+    "severity": "MEDIUM",
+    "risk_score": 41,
+    "priority": "P2",
+    "component": "uuid",
+    "file": "package-lock.json",
+    "installed_version": "3.4.0",
+    "fixed_version": "11.1.1, 12.0.1, 13.0.1",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "e3341082-1f2b-4cdf-aa76-10e5ef202920",
+    "title": "CVE-2023-28155: request",
+    "rule_id": "CVE-2023-28155",
+    "cve": "CVE-2023-28155",
+    "severity": "MEDIUM",
+    "risk_score": 39,
+    "priority": "P2",
+    "component": "request",
+    "file": "package-lock.json",
+    "installed_version": "2.88.2",
+    "fixed_version": null,
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "MANUAL_REVIEW",
+    "status_text": "Требуется ручное вмешательство",
+    "status_reason": "исправленной версии нет",
+    "manual_reason": "исправленной версии нет",
+    "fix": null
+   },
+   {
+    "id": "516c5b3c-2942-4ce9-ac2c-d85035320e7c",
+    "title": "CVE-2026-82417: qs",
+    "rule_id": "CVE-2026-82417",
+    "cve": "CVE-2026-82417",
+    "severity": "MEDIUM",
+    "risk_score": 38,
+    "priority": "P2",
+    "component": "qs",
+    "file": "package-lock.json",
+    "installed_version": "6.5.5",
+    "fixed_version": "6.16.0",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "2506b3cc-9bd2-4b13-b240-cf426f8311ea",
+    "title": "CVE-2025-15284: qs",
+    "rule_id": "CVE-2025-15284",
+    "cve": "CVE-2025-15284",
+    "severity": "MEDIUM",
+    "risk_score": 36,
+    "priority": "P2",
+    "component": "qs",
+    "file": "package-lock.json",
+    "installed_version": "6.5.5",
+    "fixed_version": "6.14.1",
+    "scanner": "trivy",
+    "category": "dependency",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   },
+   {
+    "id": "b12fcf2b-1ee4-477a-9bf6-a469660797b3",
+    "title": "Dockerfile: отсутствует HEALTHCHECK",
+    "rule_id": "DS-0026",
+    "cve": null,
+    "severity": "LOW",
+    "risk_score": 10,
+    "priority": "P4",
+    "component": "Dockerfile",
+    "file": "Dockerfile",
+    "installed_version": null,
+    "fixed_version": null,
+    "scanner": "trivy",
+    "category": "configuration",
+    "source": "repository",
+    "origin": null,
+    "status": "FOUND",
+    "status_text": "Проблема обнаружена",
+    "status_reason": null,
+    "manual_reason": null,
+    "fix": null
+   }
+  ],
+  "limit": 500,
+  "offset": 0,
+  "total": 8
+ },
+ "changes_since_previous": null,
+ "fix_run": null,
+ "deployment": null,
+ "assumptions": [],
+ "llm": {
+  "status": "NOT_RUN",
+  "message": "Пояснения модели не запрашивались.",
+  "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+  "explained": 0,
+  "failed": 0,
+  "provider": null,
+  "model": null,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "failures": [],
+  "job": null
+ },
+ "proposed_actions": [
+  {
+   "finding_id": "16690a38-e653-4551-aa4b-91260b2a7da8",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "7082f708-e9eb-4e47-b911-d708dfd25a4c",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "b6299afb-3803-4708-97bf-5783ffc84838",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "62124c96-0507-4ddb-a6e9-adc1a4f5b780",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "e3341082-1f2b-4cdf-aa76-10e5ef202920",
+   "action": "manual_review",
+   "detail": "исправленной версии нет"
+  },
+  {
+   "finding_id": "516c5b3c-2942-4ce9-ac2c-d85035320e7c",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "2506b3cc-9bd2-4b13-b240-cf426f8311ea",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  },
+  {
+   "finding_id": "b12fcf2b-1ee4-477a-9bf6-a469660797b3",
+   "action": "generate_fix",
+   "detail": "Запросить предложение исправления: POST /api/findings/{id}/fix."
+  }
+ ],
+ "limitations": [
+  "Исправления проверяются только в изолированной копии. Статус «применено к приложению» ставится, только если PR слит, образ собран после слияния и повторный скан нового образа больше не видит находку, а пакет в нём виден. Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.",
+  "Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.",
+  "Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.",
+  "Пояснения языковой модели — предположения: они не проверялись сканерами и не влияют на статусы."
+ ]
+}

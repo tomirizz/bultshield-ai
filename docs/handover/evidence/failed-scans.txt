@@ -1,0 +1,15 @@
+3bd56c8b-3b92-496a-a9d0-80fbca742822 вид=static создана=2026-10-13T08:33:58.368758Z
+  сообщение: Неполная проверка: gitleaks, semgrep. Результаты успешных сканеров сохранены. код: SCANNER_FAILED
+  сканер trivy: COMPLETED
+  сканер semgrep: FAILED Semgrep не установлен в worker.
+  сканер gitleaks: FAILED Gitleaks не установлен в worker.
+4247ede4-bc9d-4ae0-86a0-0890a3608463 вид=static создана=2026-10-13T08:32:27.253540Z
+  сообщение: Неполная проверка: gitleaks, semgrep. Результаты успешных сканеров сохранены. код: SCANNER_FAILED
+  сканер trivy: COMPLETED
+  сканер semgrep: FAILED Semgrep не установлен в worker.
+  сканер gitleaks: FAILED Gitleaks не установлен в worker.
+e7065736-e3d4-4697-9304-d9228b9dac93 вид=static создана=2026-10-09T12:46:21.013797Z
+  сообщение: Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки. код: CHECKOUT_FAILED
+  сканер trivy: FAILED Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.
+  сканер semgrep: FAILED Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.
+  сканер gitleaks: FAILED Не удалось загрузить репозиторий. Проверьте публичный GitHub URL и название ветки.

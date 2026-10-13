@@ -1,0 +1,12 @@
+ОТЧЁТ: docs/handover/examples/image-COMPLETED-ef3146d5.json
+ОТЧЁТ: docs/handover/examples/image-COMPLETED-6f20e71d.json
+ОТЧЁТ: docs/handover/examples/static-FAILED-3bd56c8b.json
+ОТЧЁТ: docs/handover/examples/static-FAILED-4247ede4.json
+ОТЧЁТ: docs/handover/examples/static-FAILED-e7065736.json
+ОТЧЁТ: docs/handover/examples/image-COMPLETED-a67e6414.json
+ОТЧЁТ: docs/handover/examples/image-COMPLETED-14233040.json
+ОТЧЁТ: docs/handover/examples/image-COMPLETED-7da01386.json
+FAILED-ПРОВЕРКИ: docs/handover/evidence/failed-scans.txt
+ПОЯСНЕНИЯ МОДЕЛИ: docs/handover/evidence/llm-explanations.txt
+ОЦЕНКА РАСХОДОВ: docs/handover/evidence/llm-estimate.txt
+СЛОМАННОЕ ОБНОВЛЕНИЕ: ИТОГ: BREAKS_APP (5 с) -> docs/handover/evidence/breaking-update.txt

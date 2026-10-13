@@ -1,0 +1,52 @@
+ИТОГ: BREAKS_APP
+Приложение не ответило на /health после обновления (или завершилось сразу после запуска).
+Способ обновления: npm install пакет@версия (прямая зависимость)
+
+Шаги:
+  docker   passed      0.1 c
+  install  passed      2.2 c
+  tests    passed      2.1 c
+  build    passed      2.3 c
+  start    passed      0.3 c
+  health   failed      1.4 c
+
+Конец лога шага «health»:
+node:internal/modules/package_json_reader:197
+    const result = modulesBinding.getNearestParentPackageJSON(checkPath);
+                                  ^
+
+Error: Cannot read package config /app/package.json: permission denied.
+    at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:197:35)
+    at trySelf (node:internal/modules/cjs/loader:662:33)
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1548:24)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at node:internal/modules/cjs/loader:2221:12 {
+  code: 'ERR_INVALID_PACKAGE_CONFIG'
+}
+
+Node.js v24.21.0
+
+Закрыто: нет
+
+Осталось: нет
+
+Новые: нет
+
+Diff (кратко):
+-        "lodash": "4.18.1",
++        "lodash": "4.17.21",
+-      "version": "4.18.1",
+-      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz",
+-      "integrity": "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==",
++      "version": "4.17.21",
++      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
++      "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==",
+-    "lodash": "4.18.1",
++    "lodash": "4.17.21",
+
+Полный результат: docs/handover/evidence/still-detected.json

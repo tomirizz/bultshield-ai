@@ -1,3 +1,5 @@
+Пакет для сдачи функции 1: [инструкция, сценарии, реальные результаты и ограничения](docs/handover/README.md).
+
 # BultShield — Security Review
 
 Unified Scan Engine on Bult.ai: queued jobs → worker → Gitleaks → Semgrep CE → Trivy → normalization → PostgreSQL findings. [Stage 6 architecture and deployment](docs/STAGE_6.md). [Stage 5 scope, security policy and deployment](docs/STAGE_5.md).

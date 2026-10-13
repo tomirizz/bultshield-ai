@@ -1,0 +1,55 @@
+{
+ "check_id": "ef3146d5-d8c5-4474-adc2-49dd8041293e",
+ "job": {
+  "id": "d4bd44f7-3760-41c5-93e5-122c351a0742",
+  "check_id": "ef3146d5-d8c5-4474-adc2-49dd8041293e",
+  "status": "COMPLETED",
+  "created_at": "2026-10-13T17:48:02.006165+00:00",
+  "started_at": "2026-10-13T17:48:03.583092+00:00",
+  "completed_at": "2026-10-13T17:48:03.714112+00:00",
+  "result": {
+   "model": "fake-explainer-1",
+   "errors": [
+    "Лимит запросов на одну проверку (20): не пояснено групп находок: 32."
+   ],
+   "failed": 0,
+   "reused": 0,
+   "status": "PARTIAL",
+   "planned": 20,
+   "skipped": 32,
+   "cost_usd": 0.0,
+   "provider": "fake",
+   "completed": 20,
+   "input_tokens": 15305,
+   "output_tokens": 2453
+  },
+  "error": null
+ },
+ "llm": {
+  "status": "PARTIAL",
+  "message": "Пояснено групп находок: 20; для остальных пояснения нет (причины ниже). Статусы и факты от этого не зависят.",
+  "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+  "explained": 20,
+  "failed": 0,
+  "provider": "fake",
+  "model": "fake-explainer-1",
+  "input_tokens": 15305,
+  "output_tokens": 2453,
+  "cost_usd": 0.0,
+  "failures": [
+   {
+    "subject": "*limit",
+    "status": "LIMIT_EXCEEDED",
+    "error_code": "limit",
+    "message": "Лимит запросов на одну проверку (20): не пояснено групп находок: 32."
+   }
+  ],
+  "job": {
+   "id": "d4bd44f7-3760-41c5-93e5-122c351a0742",
+   "status": "COMPLETED",
+   "created_at": "2026-10-13T17:48:02.006165+00:00",
+   "completed_at": "2026-10-13T17:48:03.714112+00:00",
+   "error": null
+  }
+ }
+}

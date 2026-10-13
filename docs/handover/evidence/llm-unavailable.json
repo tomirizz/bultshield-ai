@@ -1,0 +1,62 @@
+{
+  "check_id": "6f20e71d-2b3c-4f41-a58d-2d5498d5a040",
+  "provider": "fake",
+  "mode": "unavailable",
+  "worker_processed_job": true,
+  "duplicate_request_same_job": true,
+  "before_facts_sha256": "3bc9291df6d1998ae515c482d14ffac305f8f19da2bc7779cf19e8090833d691",
+  "after_facts_sha256": "3bc9291df6d1998ae515c482d14ffac305f8f19da2bc7779cf19e8090833d691",
+  "facts_unchanged": true,
+  "job": {
+    "id": "1b74484d-1e57-4bce-a435-dabc6440fb32",
+    "check_id": "6f20e71d-2b3c-4f41-a58d-2d5498d5a040",
+    "status": "COMPLETED",
+    "created_at": "2026-10-13T17:49:38.504366+00:00",
+    "started_at": "2026-10-13T17:49:38.585323+00:00",
+    "completed_at": "2026-10-13T17:49:38.651768+00:00",
+    "result": {
+      "model": "fake-explainer-1",
+      "errors": [
+        "package:request@2.88.2: Тестовая модель недоступна (имитация сбоя)."
+      ],
+      "failed": 1,
+      "reused": 0,
+      "status": "UNAVAILABLE",
+      "planned": 20,
+      "skipped": 51,
+      "cost_usd": 0.0,
+      "provider": "fake",
+      "completed": 0,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "error": null
+  },
+  "llm": {
+    "status": "UNAVAILABLE",
+    "message": "Модель недоступна, пояснений нет. Результаты сканеров, статусы и предложенные действия от этого не зависят.",
+    "note": "Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.",
+    "explained": 0,
+    "failed": 1,
+    "provider": "fake",
+    "model": "fake-explainer-1",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "failures": [
+      {
+        "subject": "package:request@2.88.2",
+        "status": "UNAVAILABLE",
+        "error_code": "network",
+        "message": "Тестовая модель недоступна (имитация сбоя)."
+      }
+    ],
+    "job": {
+      "id": "1b74484d-1e57-4bce-a435-dabc6440fb32",
+      "status": "COMPLETED",
+      "created_at": "2026-10-13T17:49:38.504366+00:00",
+      "completed_at": "2026-10-13T17:49:38.651768+00:00",
+      "error": null
+    }
+  }
+}

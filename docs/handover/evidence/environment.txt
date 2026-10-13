@@ -1,0 +1,3 @@
+/health/live HTTP 200: {"status":"ok","app":"bultshield-ai","stage":20}
+/health/ready HTTP 200: {"status":"ready","database":"connected","schema_revision":"0013","environment":"development","stage":20,"scanners_enabled":true,"ai_enabled":false}
+Version: 0.74.0

@@ -1,0 +1,128 @@
+{
+  "outcome": "STILL_DETECTED",
+  "reason": "Приложение работает, но 3 из 7 целевых находок остались в пересобранном образе: обновление их не закрыло.",
+  "failed_step": null,
+  "steps": [
+    {
+      "name": "docker",
+      "status": "passed",
+      "seconds": 0.5,
+      "log_tail": "rsion:  v1.24.0\n    Path:     /Users/tomirizz/.docker/cli-plugins/docker-scout\n\nServer:\n Containers: 25\n  Running: 2\n  Paused: 0\n  Stopped: 23\n Images: 47\n Server Version: 29.7.2\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: cgroupfs\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Discovered Devices:\n  cdi: docker.com/gpu=webgpu\n Swarm: inactive\n Runtimes: runc io.containerd.runc.v2\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.12.76-linuxkit\n Operating System: Docker Desktop\n OSType: linux\n Architecture: aarch64\n CPUs: 2\n Total Memory: 3.827GiB\n Name: docker-desktop\n ID: 934c99f2-8cb8-42e9-80a2-f62173303f96\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n HTTP Proxy: http.docker.internal:3128\n HTTPS Proxy: http.docker.internal:3128\n No Proxy: hubproxy.docker.internal\n Labels:\n  com.docker.desktop.address=unix:///Users/tomirizz/Library/Containers/com.docker.docker/Data/docker-cli.sock\n Experimental: false\n Insecure Registries:\n  hubproxy.docker.internal:5555\n  ::1/128\n  127.0.0.0/8\n Live Restore Enabled: false\n Firewall Backend: iptables"
+    },
+    {
+      "name": "install",
+      "status": "passed",
+      "seconds": 2.1,
+      "log_tail": "npm warn deprecated har-validator@5.1.5: this library is no longer supported\nnpm warn deprecated uuid@3.4.0: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142\n\nadded 48 packages in 1s\nnpm notice\nnpm notice New major version of npm available! 11.19.0 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice"
+    },
+    {
+      "name": "tests",
+      "status": "passed",
+      "seconds": 2.3,
+      "log_tail": "> bultshield-demo-app@1.0.0 test\n> node --test\n\n✔ summarize computes count, sum and mean (4.350167ms)\n✔ request library loads (285.278208ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1061.470792"
+    },
+    {
+      "name": "build",
+      "status": "passed",
+      "seconds": 0.2,
+      "log_tail": "sha256:159ef9646686f57f8f4118efa8adc20cc89ad4383a2221bfef18982df027d6c6"
+    },
+    {
+      "name": "start",
+      "status": "passed",
+      "seconds": 0.3,
+      "log_tail": "cd3187cf24767832d17208373b2cc79ef883aed55121ba3b61fb387d80e0a7e9"
+    },
+    {
+      "name": "health",
+      "status": "passed",
+      "seconds": 0.7,
+      "log_tail": ""
+    },
+    {
+      "name": "save",
+      "status": "passed",
+      "seconds": 0.5,
+      "log_tail": ""
+    },
+    {
+      "name": "rescan",
+      "status": "passed",
+      "seconds": 0.5,
+      "log_tail": ""
+    }
+  ],
+  "diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -9,7 +9,7 @@\n       \"version\": \"1.0.0\",\n       \"license\": \"ISC\",\n       \"dependencies\": {\n-        \"lodash\": \"4.18.1\",\n+        \"lodash\": \"4.17.21\",\n         \"request\": \"2.88.2\"\n       }\n     },\n@@ -281,9 +281,9 @@\n       }\n     },\n     \"node_modules/lodash\": {\n-      \"version\": \"4.18.1\",\n-      \"resolved\": \"https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz\",\n-      \"integrity\": \"sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==\",\n+      \"version\": \"4.17.21\",\n+      \"resolved\": \"https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz\",\n+      \"integrity\": \"sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==\",\n       \"license\": \"MIT\"\n     },\n     \"node_modules/mime-db\": {\n--- a/package.json\n+++ b/package.json\n@@ -12,7 +12,7 @@\n   \"license\": \"ISC\",\n   \"type\": \"commonjs\",\n   \"dependencies\": {\n-    \"lodash\": \"4.18.1\",\n+    \"lodash\": \"4.17.21\",\n     \"request\": \"2.88.2\"\n   }\n }\n",
+  "resolved": [
+    {
+      "rule_id": "CVE-2020-28500",
+      "package": "lodash"
+    },
+    {
+      "rule_id": "CVE-2020-8203",
+      "package": "lodash"
+    },
+    {
+      "rule_id": "CVE-2021-23337",
+      "package": "lodash"
+    },
+    {
+      "rule_id": "NSWG-ECO-516",
+      "package": "lodash"
+    }
+  ],
+  "remaining": [
+    {
+      "rule_id": "CVE-2025-13465",
+      "package": "lodash"
+    },
+    {
+      "rule_id": "CVE-2026-2950",
+      "package": "lodash"
+    },
+    {
+      "rule_id": "CVE-2026-4800",
+      "package": "lodash"
+    }
+  ],
+  "introduced": [
+    {
+      "rule_id": "CVE-2023-26136",
+      "package": "tough-cookie"
+    },
+    {
+      "rule_id": "CVE-2023-28155",
+      "package": "request"
+    },
+    {
+      "rule_id": "CVE-2025-15284",
+      "package": "qs"
+    },
+    {
+      "rule_id": "CVE-2025-7783",
+      "package": "form-data"
+    },
+    {
+      "rule_id": "CVE-2026-12143",
+      "package": "form-data"
+    },
+    {
+      "rule_id": "CVE-2026-41907",
+      "package": "uuid"
+    },
+    {
+      "rule_id": "CVE-2026-82417",
+      "package": "qs"
+    }
+  ],
+  "scan_db_updated_at": "2026-10-13T06:41:11.035783622Z",
+  "method": "direct",
+  "candidates": [
+    {
+      "package": "lodash",
+      "target": "4.17.21",
+      "method": "direct"
+    }
+  ],
+  "files": []
+}
