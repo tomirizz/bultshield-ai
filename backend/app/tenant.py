@@ -10,6 +10,7 @@ from .models import (
     DependencyFixRun,
     Finding,
     Fix,
+    LLMCall,
     Project,
     Repository,
     Rescan,
@@ -28,7 +29,7 @@ def isolate(session, owner_id):
     scans = select(Scan.__table__.c.id).where(Scan.__table__.c.project_id.in_(projects))
     runs = select(CorrelationRun.__table__.c.id).where(CorrelationRun.__table__.c.project_id.in_(projects))
     filters = [(Project, Project.owner_id == owner_id), (AuditEvent, AuditEvent.user_id == owner_id)]
-    filters += [(model, model.project_id.in_(projects)) for model in (Repository, Scan, Finding, Rescan, CorrelationRun, WebTarget, AgentRun, DependencyFixRun)]
+    filters += [(model, model.project_id.in_(projects)) for model in (Repository, Scan, Finding, Rescan, CorrelationRun, WebTarget, AgentRun, DependencyFixRun, LLMCall)]
     filters += [(model, model.finding_id.in_(findings)) for model in (AIAnalysis, Fix)]
     filters += [(ScanJob, ScanJob.scan_id.in_(scans)), (SecurityIssueGroup, SecurityIssueGroup.run_id.in_(runs))]
 

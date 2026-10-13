@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
@@ -225,6 +226,34 @@ class DependencyFixRun(Record, Base):
     pull_request: Mapped[dict | None] = mapped_column(JSONB)
     deployment: Mapped[dict | None] = mapped_column(JSONB)
     error_message: Mapped[str | None] = mapped_column(sa.Text)
+
+
+class LLMCall(Record, Base):
+    """Один запрос к языковой модели за пояснением. Хранит, что отправлено (после удаления секретов), чем ответила модель,
+    сколько это стоило и почему запрос не удался. Пояснение модели — предположение: оно никогда не меняет статусы проверки."""
+    __tablename__ = "llm_calls"
+    __table_args__ = (
+        sa.ForeignKeyConstraint(["project_id", "scan_id"], ["scans.project_id", "scans.id"], ondelete="CASCADE"),
+        sa.CheckConstraint("status IN ('COMPLETED','UNAVAILABLE','INVALID_RESPONSE','ERROR','LIMIT_EXCEEDED')", name="status_values"),
+        sa.Index("uq_llm_calls_completed", "scan_id", "input_hash", unique=True, postgresql_where=sa.text("status = 'COMPLETED'")),
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    scan_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    subject_key: Mapped[str] = mapped_column(sa.String(300))
+    finding_ids: Mapped[list] = mapped_column(JSONB, default=list, server_default=sa.text("'[]'::jsonb"))
+    provider: Mapped[str] = mapped_column(sa.String(32))
+    model: Mapped[str | None] = mapped_column(sa.String(200))
+    prompt_version: Mapped[str] = mapped_column(sa.String(32))
+    input_hash: Mapped[str] = mapped_column(sa.String(64))
+    status: Mapped[str] = mapped_column(sa.String(20))
+    error_code: Mapped[str | None] = mapped_column(sa.String(40))
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
+    input_tokens: Mapped[int] = mapped_column(default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(default=0, server_default="0")
+    cost_usd: Mapped[Decimal] = mapped_column(sa.Numeric(12, 6), default=Decimal(0), server_default="0")
+    duration_ms: Mapped[int] = mapped_column(default=0, server_default="0")
+    request: Mapped[dict | None] = mapped_column(JSONB)
+    result: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class Rescan(Record, Base):

@@ -7,7 +7,8 @@ from sqlalchemy import select
 
 from .fix_runs import effective_status, latest_runs, now
 from .fix_service import supported
-from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, ScanStatus
+from .llm_report import llm_assumptions, llm_section
+from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, LLMCall, ScanStatus
 
 STATUS_TEXT = {
     'FOUND': 'Проблема обнаружена',
@@ -25,6 +26,7 @@ LIMITATIONS = (
     'Проверяется опубликованный образ: система не наблюдает, что именно он запущен в эксплуатации.',
     'Находки из базового образа и пакетов ОС в первой версии автоматически не исправляются.',
     'Отсутствие находок не гарантирует безопасность: проверена только область, которую охватывают сканеры.',
+    'Пояснения языковой модели — предположения: они не проверялись сканерами и не влияют на статусы.',
 )
 
 
@@ -211,7 +213,7 @@ def agent_entries(scan, findings, fix_runs, current):
     return entries
 
 
-def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None):
+def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None, llm_calls=None):
     """findings уже отсортированы. fixes и analyses: словари finding_id -> последняя запись.
 
     fix_runs: {'latest': запуск агента, 'completed': последний завершённый запуск} или None.
@@ -271,7 +273,8 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0,
         'findings': {'items': items, 'limit': limit, 'offset': offset, 'total': len(findings)},
         'fix_run': run_summary((fix_runs or {}).get('latest'), current),
         'deployment': deployment_summary((fix_runs or {}).get('evaluated')),
-        'assumptions': assumptions,
+        'assumptions': assumptions + llm_assumptions(llm_calls or [], [i['id'] for i in items]),
+        'llm': llm_section(llm_calls or []),
         'proposed_actions': actions,
         'limitations': list(LIMITATIONS),
     }
@@ -288,4 +291,5 @@ def load_report(db, scan, limit=100, offset=0):
         for item in db.scalars(select(AIAnalysis).where(AIAnalysis.finding_id.in_(ids), AIAnalysis.status == 'COMPLETED')
                                .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())):
             analyses.setdefault(item.finding_id, item)
-    return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id))
+    calls = db.scalars(select(LLMCall).where(LLMCall.scan_id == scan.id).order_by(LLMCall.created_at.desc(), LLMCall.id.desc())).all()
+    return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id), llm_calls=calls)

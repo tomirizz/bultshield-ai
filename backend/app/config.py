@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,11 +20,32 @@ class Settings(BaseSettings):
     ai_endpoint: str = "http://127.0.0.1:8081"
     ai_model: str = "qwen2.5-1.5b-instruct"
     ai_timeout_seconds: int = Field(default=240, ge=10, le=600)
+    # Подключение внешней модели для пояснений. Ключ хранится только на сервере и не попадает в ответы API и логи.
+    llm_provider: str = 'disabled'  # disabled | fake | openai | anthropic
+    llm_api_key: SecretStr = SecretStr('')
+    llm_base_url: str = ''
+    llm_model: str = ''
+    llm_timeout_seconds: int = Field(default=30, ge=3, le=120)
+    llm_max_output_tokens: int = Field(default=600, ge=100, le=2000)
+    llm_max_input_chars: int = Field(default=6000, ge=500, le=20000)
+    llm_max_calls_per_check: int = Field(default=20, ge=1, le=100)
+    llm_daily_call_limit: int = Field(default=200, ge=1, le=10000)
+    llm_price_input_per_mtok: float = Field(default=0, ge=0)
+    llm_price_output_per_mtok: float = Field(default=0, ge=0)
+    llm_fake_mode: str = 'ok'  # только для провайдера fake: ok | unavailable | garbage | invented_version | leak
     frontend_dist: Path = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
     @property
     def authentication_required(self) -> bool:
         return self.auth_enabled or self.app_env == 'production'
+
+    @field_validator('llm_provider')
+    @classmethod
+    def known_provider(cls, value):
+        value = value.strip().lower()
+        if value not in ('disabled', 'fake', 'openai', 'anthropic'):
+            raise ValueError('LLM_PROVIDER: disabled, fake, openai или anthropic')
+        return value
 
     @field_validator('public_url')
     @classmethod
