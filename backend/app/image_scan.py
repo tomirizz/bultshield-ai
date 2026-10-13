@@ -109,12 +109,26 @@ def parse_reference(text, allowed=None):
     return ImageRef(host, match['path'], match['tag'], match['digest'])
 
 
+def _repository_identity(repository):
+    """Trivy emits Docker Hub's familiar names (node, owner/app) in RepoDigests."""
+    first, separator, rest = repository.partition('/')
+    if separator and ('.' in first or ':' in first or first == 'localhost'):
+        host, path = first, rest
+    else:
+        host, path = 'docker.io', repository
+    if host in ('docker.io', 'index.docker.io'):
+        host = 'docker.io'
+        if '/' not in path:
+            path = 'library/' + path
+    return host + '/' + path
+
+
 def resolve_digest(ref, repo_digests):
     """Digest образа: из ссылки или из отчёта Trivy. Без него результат нельзя привязать к образу."""
     found = set()
     for item in repo_digests:
         repository, _, digest = item.partition('@')
-        if repository == ref.repository and re.fullmatch(_DIGEST, digest):
+        if _repository_identity(repository) == _repository_identity(ref.repository) and re.fullmatch(_DIGEST, digest):
             found.add(digest)
     if ref.digest:
         if found and ref.digest not in found:

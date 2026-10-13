@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from app.config import Settings
@@ -42,6 +43,16 @@ def test_bult_rejects_public_endpoint(monkeypatch):
     monkeypatch.setattr(module, 'private_endpoint', lambda url: (_ for _ in ()).throw(ValueError('unsafe')))
     with pytest.raises(LLMUnavailable):
         build_provider(settings()).complete('Правила', '{}', 600)
+
+
+def test_live_language_and_no_fix_failures_are_constrained():
+    from app.bult_llm import NO_FIX, response_schema
+    schema = response_schema('{"package":"request","fixed_versions":[]}')
+    pattern = schema['properties']['summary']['pattern']
+    assert re.fullmatch(pattern, 'Проблема в пакете request.')
+    assert not re.fullmatch(pattern, 'SSRF漏洞被发现')
+    assert schema['properties']['recommendation'] == {'type': 'string', 'const': NO_FIX}
+    assert 'const' not in response_schema('{"fixed_versions":["2.5.6"]}')['properties']['recommendation']
 
 
 @pytest.mark.parametrize('value', [None, {}, {'choices': []}, {'choices': [{'finish_reason': 'length'}]}])

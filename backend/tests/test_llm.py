@@ -404,7 +404,8 @@ def test_fake_provider_picks_the_fix_on_the_same_major_version():
 
 def test_fake_provider_respects_the_status_from_the_system():
     deployed, _ = fake_text(status='FIX_DEPLOYED')
-    assert 'не нужно' in deployed['recommendation'] and 'уже применено' in deployed['summary'] and 'Обновить' not in deployed['recommendation']
+    assert 'не нужно' in deployed['recommendation'] and 'в опубликованном образе' in deployed['summary'] and 'Обновить' not in deployed['recommendation']
+    assert 'запущена в приложении, неизвестно' in deployed['summary']
     manual, _ = fake_text(status='MANUAL_REVIEW')
     assert 'нужен человек' in manual['recommendation'] and 'до версии 5.0.9' in manual['recommendation']
     proposed, _ = fake_text(status='FIX_VERIFIED')
@@ -580,7 +581,7 @@ def test_explanations_are_saved_and_shown_as_assumptions(db, check):
     saved = rows(db)
     assert len(saved) == 6 and {r.status for r in saved} == {'COMPLETED'}
     lodash = next(r for r in saved if r.subject_key == 'package:lodash@4.17.15')
-    assert lodash.provider == 'fake' and lodash.model == 'fake-explainer-1' and lodash.prompt_version == 'explain-v2'
+    assert lodash.provider == 'fake' and lodash.model == 'fake-explainer-1' and lodash.prompt_version == 'explain-v3'
     assert len(lodash.finding_ids) == 7 and lodash.request['findings_total'] == 7 and set(lodash.result) == {'summary', 'risk', 'recommendation'}
     assert lodash.input_tokens > 0 and lodash.output_tokens > 0 and float(lodash.cost_usd) > 0 and lodash.duration_ms >= 0
     assert summary['cost_usd'] == pytest.approx(sum(float(r.cost_usd) for r in saved), abs=1e-5)

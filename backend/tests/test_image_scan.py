@@ -123,6 +123,23 @@ def test_resolve_digest_cases():
         resolve_digest(pinned, [f'localhost:5001/app@{OTHER}'])
 
 
+@pytest.mark.parametrize('repository', ['node', 'library/node', 'docker.io/library/node', 'index.docker.io/library/node'])
+def test_docker_hub_familiar_names_resolve_to_the_same_repository(repository):
+    # Real Trivy 0.74 remote output for docker.io/library/node:22.14.0-alpine uses node@sha256:...
+    ref = ImageRef('docker.io', 'library/node', '22.14.0-alpine', None)
+    assert resolve_digest(ref, [f'{repository}@{DIGEST}']) == DIGEST
+
+
+def test_docker_hub_normalization_preserves_repository_and_digest_identity():
+    ref = ImageRef('docker.io', 'library/node', '22.14.0-alpine', None)
+    for repositories in ([f'other/node@{DIGEST}'], [f'evil.example/library/node@{DIGEST}'],
+                         [f'node@{DIGEST}', f'docker.io/library/node@{OTHER}']):
+        with pytest.raises(ImageScanError):
+            resolve_digest(ref, repositories)
+    with pytest.raises(ImageScanError, match='не совпадает'):
+        resolve_digest(ImageRef('docker.io', 'library/node', None, DIGEST), [f'node@{OTHER}'])
+
+
 def test_successful_scan_returns_digest_and_findings(sandbox):
     bin_dir = sandbox()
     result = run_image_scan(LOCAL)

@@ -31,18 +31,27 @@ export interface NewProject {
 }
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } });
-  const data = await response.json().catch(() => { throw new Error('Сервис вернул некорректный ответ. Повторите позже.'); });
-  if (data === null && response.ok) return data as T;
-  if (!data) throw new Error(`Сервис временно недоступен (HTTP ${response.status}). Повторите позже.`);
-  if (!response.ok) {
-    const detail = data.detail;
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail)
-      ? detail.map((item: { msg: string }) => item.msg.replace('Value error, ', '')).join('. ')
-      : detail?.message || 'Не удалось выполнить запрос. Проверьте соединение.';
-    throw new Error(message);
+  const controller = new AbortController();
+  const timeout = options?.signal ? undefined : setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(path, { ...options, signal: options?.signal || controller.signal, headers: { 'Content-Type': 'application/json', ...options?.headers } });
+    const data = await response.json().catch(() => { throw new Error('Сервис вернул некорректный ответ. Повторите позже.'); });
+    if (data === null && response.ok) return data as T;
+    if (!data) throw new Error(`Сервис временно недоступен (HTTP ${response.status}). Повторите позже.`);
+    if (!response.ok) {
+      const detail = data.detail;
+      const message = typeof detail === 'string' ? detail : Array.isArray(detail)
+        ? detail.map((item: { msg: string }) => item.msg.replace('Value error, ', '')).join('. ')
+        : detail?.message || 'Не удалось выполнить запрос. Проверьте соединение.';
+      throw new Error(message);
+    }
+    return data as T;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Сервис не ответил за 30 секунд. Проверьте историю: задание могло быть принято. Обновите данные перед повторной отправкой.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return data as T;
 }
 
 export const api = {

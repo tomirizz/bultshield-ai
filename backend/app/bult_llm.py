@@ -5,6 +5,26 @@ from http.client import HTTPConnection, HTTPException
 from .ai_service import private_endpoint
 from .llm import MAX_RESPONSE_BYTES, LLMBadResponse, LLMResult, LLMUnavailable
 
+RUSSIAN_TEXT = '^[А-Яа-яЁё][А-Яа-яЁёA-Za-z0-9 .,;:()!?/+-]*$'
+NO_FIX = ('Сканер не указал исправленную версию. Нужен ручной разбор применимости уязвимости '
+          'и вариантов замены или ограничения использования компонента. Автоматическое исправление не подготовлено.')
+
+
+def response_schema(user):
+    schema = {'type': 'object', 'properties': {
+        name: {'type': 'string', 'minLength': 20, 'maxLength': 600, 'pattern': RUSSIAN_TEXT}
+        for name in ('summary', 'risk', 'recommendation')},
+        'required': ['summary', 'risk', 'recommendation'], 'additionalProperties': False}
+    try:
+        payload = json.loads(user)
+    except ValueError:
+        return schema
+    if isinstance(payload, dict) and 'fixed_versions' in payload and not payload['fixed_versions']:
+        # The live small model invented an update for an unmaintained package.
+        # No-fix actions are scanner facts, so constrain them instead of trusting generation.
+        schema['properties']['recommendation'] = {'type': 'string', 'const': NO_FIX}
+    return schema
+
 
 def parse_response(data, model):
     try:
@@ -35,11 +55,10 @@ class BultProvider:
         try:
             host, port = private_endpoint(self.settings.ai_endpoint)
             connection = HTTPConnection(host, port, timeout=self.settings.ai_timeout_seconds)
-            schema = {'type': 'object', 'properties': {name: {'type': 'string', 'minLength': 20, 'maxLength': 600}
-                      for name in ('summary', 'risk', 'recommendation')},
-                      'required': ['summary', 'risk', 'recommendation'], 'additionalProperties': False}
+            schema = response_schema(user)
             body = {'model': self.model, 'temperature': 0.1, 'max_tokens': max_tokens, 'stream': False,
-                    'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
+                    'messages': [{'role': 'system', 'content': system + '\nКаждое поле пиши по-русски, начиная с русского слова. Кратко: по одному-два предложения. Не повторяй версии и CVE: они уже есть в карточке. Если исправленной версии нет, не обещай исправление обновлением.'},
+                                 {'role': 'user', 'content': 'Объясни по-русски. Данные сканера: ' + user}],
                     'response_format': {'type': 'json_object', 'schema': schema}}
             connection.request('POST', '/v1/chat/completions', body=json.dumps(body).encode(),
                                headers={'Content-Type': 'application/json'})
