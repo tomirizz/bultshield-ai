@@ -1,0 +1,16 @@
+{
+  "html_url": "https://github.com/tomirizz/bultshield-training-app/pull/1",
+  "title": "Обновить уязвимые зависимости: form-data, qs",
+  "state": "closed",
+  "merged": true,
+  "merged_at": "2026-10-09T12:08:34Z",
+  "changed_files": 2,
+  "head_ref": "bultshield/fix-6851c7e8a7",
+  "base_sha": "aa7759883f250c81139e7f2a28bba00cf73c6246",
+  "head_sha": "401de29f09eabc411d0a93dcd26a5878a17a0d59",
+  "files": [
+    "package-lock.json",
+    "package.json"
+  ],
+  "source": "Public GitHub API, read-only inspection on 2026-10-14; existing PR, not created or modified in this acceptance"
+}
