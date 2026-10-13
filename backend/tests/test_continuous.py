@@ -1,5 +1,6 @@
 from app.continuous import compare
 from app.models import Category, Finding, Scanner
+from test_gitleaks import worker_db as worker_db
 
 
 def f(line=1, version='1.0', rule='CVE-2025-0001'):
@@ -30,3 +31,19 @@ def test_poll_queues_exact_commit_and_does_not_repeat(client, db, monkeypatch):
     assert db.scalar(select(ScanJob)).status == 'QUEUED'
     continuous.poll_once()
     assert len(db.scalars(select(Scan)).all()) == 1
+
+
+def test_claimed_job_keeps_the_requested_commit(client, db, worker_db, monkeypatch):
+    import uuid
+
+    from app import continuous, worker
+    from app.models import Repository
+    project = client.post('/api/projects', json={'name': 'pin', 'repository': {'url': 'https://github.com/example/demo', 'default_branch': 'main'}}).json()
+    repo = db.get(Repository, uuid.UUID(project['repositories'][0]['id']))
+    repo.continuous_enabled = True
+    db.commit()
+    monkeypatch.setattr(continuous, 'github_request', lambda path: {'sha': 'c' * 40})
+    continuous.poll_once()
+    job = worker.claim_job()
+    assert job.config['requested_commit'] == 'c' * 40 and job.config['trigger'] == 'continuous'
+    assert job.config['scanners'] and job.config['scope'] == 'branch_snapshot'

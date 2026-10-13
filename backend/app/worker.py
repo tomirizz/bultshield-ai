@@ -145,7 +145,9 @@ def claim_job():
         scan.completed_at = None
         scan.error_message = None
         if scan.kind == 'static':
-            scan.scanner_config = scan_configuration(scan.scanner_config.get("branch", repository.default_branch))
+            # Политика сканеров собирается заново, но запрошенный коммит не теряется: иначе проверялся бы конец ветки.
+            pinned = {key: value for key, value in scan.scanner_config.items() if key in ('requested_commit', 'trigger')}
+            scan.scanner_config = {**scan_configuration(scan.scanner_config.get("branch", repository.default_branch)), **pinned}
         scan.scanner_results = {name: {"status": "PENDING"} for name in scan.scanner_config.get('scanners', SCANNERS)}
 
         return JobData(

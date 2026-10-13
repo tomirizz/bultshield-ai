@@ -188,26 +188,38 @@ def list_rescans(db: DB, project_id: uuid.UUID | None = None, limit: Limit = 100
 
 @router.post("/scans", response_model=ScanOut, status_code=202)
 def create_scan(data: ScanRequest, db: DB):
+    return queue_source_scan(data.repository_id, db)
+
+
+def queue_source_scan(repository_id, db, commit=None):
+    """Ставит проверку исходников в очередь. С commit проверяется именно этот коммит, а не конец ветки.
+
+    Повторный запрос того же коммита, пока проверка идёт, возвращает уже созданную проверку.
+    Отдельная функция (не маршрут), чтобы commit не стал параметром запроса /api/scans.
+    """
     # Serialize submissions in this shared demo workspace, including queue limits.
     db.scalar(select(User).where(User.id == WORKSPACE_USER_ID).with_for_update())
     repository = db.scalar(
         select(Repository)
-        .where(Repository.id == data.repository_id)
+        .where(Repository.id == repository_id)
         .with_for_update()
     )
     if repository is None:
         raise HTTPException(404, "Репозиторий не найден.")
 
-    active_job = db.scalar(
-        select(ScanJob.id)
-        .join(Scan, Scan.id == ScanJob.scan_id)
+    active = db.scalar(
+        select(Scan)
+        .join(ScanJob, Scan.id == ScanJob.scan_id)
         .where(
             Scan.repository_id == repository.id,
             ScanJob.status.in_(["QUEUED", "RUNNING"]),
         )
+        .order_by(Scan.created_at, Scan.id)
         .limit(1)
     )
-    if active_job is not None:
+    if active is not None:
+        if commit is not None and active.scanner_config.get("requested_commit") == commit:
+            return active
         raise HTTPException(
             409,
             "Этот репозиторий уже ожидает проверки или сканируется.",
@@ -223,6 +235,8 @@ def create_scan(data: ScanRequest, db: DB):
         status=ScanStatus.QUEUED,
         scanner_config=scan_configuration(repository.default_branch),
     )
+    if commit is not None:
+        scan.scanner_config = {**scan.scanner_config, "requested_commit": commit, "trigger": "api"}
     db.add(scan)
     db.flush()
 
@@ -230,7 +244,7 @@ def create_scan(data: ScanRequest, db: DB):
     # Registered staging checks are separate snapshots: never imply they ran on this commit.
     target = db.scalar(select(WebTarget).where(WebTarget.project_id == repository.project_id,
         WebTarget.confirmed_control.is_(True)).order_by(WebTarget.created_at).limit(1))
-    if target is not None and pending <= 8:
+    if commit is None and target is not None and pending <= 8:
         from .nuclei_service import RULES, VERSION
         existing_web = db.scalar(select(Scan.id).join(ScanJob, ScanJob.scan_id == Scan.id).where(
             Scan.project_id == repository.project_id, Scan.kind == 'web', Scan.target_url == target.url,
