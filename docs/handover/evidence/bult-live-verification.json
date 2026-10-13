@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-13",
+  "method": "Safari UI: authenticated Bult dashboard and deployed BultShield; runtime log excerpts transcribed from displayed logs",
+  "local_git_commit": "7e03df4fee3bdcb09e446db528df749dad91e61d",
+  "bult_project_id": "e110393d-f322-4077-a12f-af27351c6801",
+  "app_url": "https://bultshield-app-bultshield-ai-brick.fin1.bult.app",
+  "services": {
+    "bultshield-postgres": "Running",
+    "bultshield-app": "Running",
+    "bultshield-worker": "Running",
+    "bultshield-model": "Running"
+  },
+  "configured_git_branch": "main",
+  "latest_successful_app_build": {
+    "commit": "03e10a8",
+    "displayed_time": "09.28.2026, 15:27"
+  },
+  "health_live": {
+    "status": "ok",
+    "app": "bultshield-ai",
+    "stage": 20
+  },
+  "health_ready": {
+    "status": "ready",
+    "database": "connected",
+    "schema_revision": "0009",
+    "environment": "production",
+    "stage": 20,
+    "scanners_enabled": true,
+    "ai_enabled": true
+  },
+  "ai_status": {
+    "enabled": true,
+    "model": "qwen2.5-1.5b-instruct",
+    "hosting": "Bult.ai"
+  },
+  "control_request": {
+    "project_id": "816c22c1-8629-496f-9682-bd22d420d90c",
+    "job_id": "8ff60afc-5f04-44ec-86e1-6b114ddec82c",
+    "status": "COMPLETED",
+    "tool": "top_issues",
+    "allow_actions": false,
+    "fix_id": null,
+    "scan_id": null,
+    "question": "Проверка 13 октября 2026: покажи три наиболее важные проблемы этого проекта и кратко объясни, что проверить первым. Только прочитай результаты, проверки и исправления не запускай.",
+    "answer_transcribed_from_ui": "В этом проекте следующие три наиболее важные проблемы были обнаружены:\n1. Уровень сканера gitleaks обнаружил возможный секрет в репозитории. Значение скрыто, действительность не проверена. Рекомендуют проверить и удалить секрет из кода.\n2. Контейнер Docker запускается от пользователя root, что может быть опасно для безопасности. Рекомендуют проверить происхождение аргумента и использовать безопасный разбор данных.\n3. Версия зависимости соответствует уязвимости из базы сканера, что требует проверки применимости CVE и обновления пакета до исправленной версии.",
+    "quality": "Failed manual grounding check: Docker root recommendation describes parsing, not least-privilege execution; secret recommendation omits revocation/rotation."
+  },
+  "pilot_request": {
+    "job_id": "f34e29cb-79b5-47dc-a690-1aff5e10fc66",
+    "status": "COMPLETED",
+    "note": "Native typing lost Cyrillic in the input. Not used to assess answer quality. Control request repeated with verified pasted text."
+  },
+  "runtime_log_window": {
+    "timezone": "Asia/Almaty (UTC+05:00)",
+    "start": "2026-10-13 23:16:04",
+    "end": "2026-10-13 23:16:52",
+    "tasks": [
+      {
+        "task": 1526,
+        "prompt_evaluated_tokens": 1359,
+        "generated_tokens": 21,
+        "prompt_ms": 20878.12,
+        "generation_ms": 849.65,
+        "total_ms": 21727.77,
+        "truncated": 0
+      },
+      {
+        "task": 1558,
+        "prompt_evaluated_tokens": 1203,
+        "generated_tokens": 182,
+        "prompt_ms": 18467.46,
+        "generation_ms": 7553.81,
+        "total_ms": 26021.28,
+        "truncated": 0
+      }
+    ],
+    "caveat": "Runtime evaluated-token counts; not API billing usage. Two sequential model tasks observed during control request."
+  },
+  "billing": {
+    "existing_model_compute": "L: 1 vCPU, 2 GB RAM",
+    "displayed_monthly_price_usd": 24,
+    "actual_charge_for_test": null,
+    "new_resources_created": false
+  },
+  "bult_resource_adapter": {
+    "implemented_in_current_branch": false,
+    "integration_test_passed": false,
+    "configured_bult_mcp_in_codex": false,
+    "bult_token_in_checked_environment": false,
+    "note": "No Bult API/MCP resource adapter found in backend/app, scripts or workflows. Dashboard access is not application integration."
+  },
+  "new_function1_real_llm_verified": false,
+  "http_client_attempt": {
+    "status": 403,
+    "server": "cloudflare",
+    "body": "error code: 1010",
+    "note": "Safari successfully reached the same deployed app. This response did not demonstrate an application outage."
+  }
+}

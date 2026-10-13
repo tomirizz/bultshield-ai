@@ -125,3 +125,10 @@
 - [frontend-audit-before.json](evidence/frontend-audit-before.json) — исходная находка npm audit с идентификатором advisory.
 - [frontend-audit-after.json](evidence/frontend-audit-after.json) — повторная проверка после обновления, 0 находок.
 - [github-preflight.json](evidence/github-preflight.json) — сводка локальной проверки перед отправкой. Результат GitHub Actions проверяется отдельно на удалённом коммите.
+
+## Живая проверка Bult и Qwen
+
+13 октября проверены панель Bult, health endpoints, вход через GitHub и свежий запрос старого помощника к Qwen. Задание `8ff60afc-5f04-44ec-86e1-6b114ddec82c` завершилось COMPLETED; журнал llama.cpp подтвердил генерацию. Выявлены неточная рекомендация модели и расхождение версий: стенд main/schema 0009, новая ветка/schema 0013. Это не приёмка нового LLM-пути функции 1 или отсутствующего адаптера ресурсов Bult. Полный отчёт — [07](07-bult-live-verification.md). Код приложения в ходе этой проверки не менялся, полный набор тестов повторно не запускался.
+
+- [bult-live-verification.json](evidence/bult-live-verification.json) — наблюдения панели, endpoints, контрольный вопрос и ответ, границы проверки.
+- [bult-model-runtime.txt](evidence/bult-model-runtime.txt) — точно переписанные выдержки живого журнала llama.cpp, время и счётчики токенов.

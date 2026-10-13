@@ -1,0 +1,14 @@
+Source: Bult dashboard > bultshield-model > Service Logs > Runtime.
+Read on 2026-10-13 in Safari. Excerpts transcribed from displayed logs, not a full export.
+Displayed timestamps use Asia/Almaty (UTC+05:00).
+
+13 October 2026 23:16:04 stderr 22183.25.539.650 I slot launch_slot_: id  0 | task 1526 | processing task, is_child = 0
+13 October 2026 23:16:26 stderr 22183.47.267.453 I slot print_timing: id  0 | task 1526 | prompt eval time =   20878.12 ms /  1359 tokens (   15.36 ms per token,    65.09 tokens per second)
+13 October 2026 23:16:26 stderr 22183.47.267.459 I slot print_timing: id  0 | task 1526 |        eval time =     849.65 ms /    21 tokens (   42.48 ms per token,    23.54 tokens per second)
+13 October 2026 23:16:26 stderr 22183.47.267.459 I slot print_timing: id  0 | task 1526 |       total time =   21727.77 ms /  1380 tokens
+13 October 2026 23:16:26 stderr 22183.47.267.527 I slot      release: id  0 | task 1526 | stop processing: n_tokens = 1382, truncated = 0
+13 October 2026 23:16:26 stderr 22183.47.299.462 I slot launch_slot_: id  0 | task 1558 | processing task, is_child = 0
+13 October 2026 23:16:52 stderr 22184.13.320.770 I slot print_timing: id  0 | task 1558 | prompt eval time =   18467.46 ms /  1203 tokens (   15.35 ms per token,    65.14 tokens per second)
+13 October 2026 23:16:52 stderr 22184.13.320.776 I slot print_timing: id  0 | task 1558 |        eval time =    7553.81 ms /   182 tokens (   41.73 ms per token,    23.96 tokens per second)
+13 October 2026 23:16:52 stderr 22184.13.320.777 I slot print_timing: id  0 | task 1558 |       total time =   26021.28 ms /  1385 tokens
+13 October 2026 23:16:52 stderr 22184.13.320.844 I slot      release: id  0 | task 1558 | stop processing: n_tokens = 1387, truncated = 0
