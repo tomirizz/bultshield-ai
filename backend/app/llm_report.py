@@ -27,7 +27,25 @@ def llm_assumptions(calls, finding_ids):
     return result
 
 
-def llm_section(calls):
+def job_brief(job):
+    if job is None:
+        return None
+    return {'id': str(job.id), 'status': job.status, 'created_at': job.created_at.isoformat() if job.created_at else None,
+            'completed_at': job.completed_at.isoformat() if job.completed_at else None, 'error': job.error_message}
+
+
+def llm_section(calls, job=None):
+    """job: последнее фоновое задание на пояснения (или None). Пока оно идёт, отчёт не должен выглядеть так, будто пояснений не будет."""
+    section = _section(calls)
+    section['job'] = job_brief(job)
+    if job is not None and job.status in ('QUEUED', 'RUNNING') and not calls:
+        section.update(status='PENDING', message='Пояснения модели запрашиваются: задание в очереди или выполняется.')
+    elif job is not None and job.status == 'FAILED' and not calls:
+        section.update(status='FAILED', message=f'Задание на пояснения не выполнено: {job.error_message} Результаты сканеров и статусы от этого не зависят.')
+    return section
+
+
+def _section(calls):
     if not calls:
         return {'status': 'NOT_RUN', 'message': 'Пояснения модели не запрашивались.', 'note': NOTE, 'explained': 0, 'failed': 0,
                 'provider': None, 'model': None, 'input_tokens': 0, 'output_tokens': 0, 'cost_usd': 0.0, 'failures': []}

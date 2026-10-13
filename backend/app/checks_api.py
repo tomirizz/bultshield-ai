@@ -5,13 +5,16 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .api import queue_source_scan
 from .check_report import load_report
 from .database import get_session
 from .image_jobs import create_image_scan
-from .models import Scan
+from .llm_jobs import enqueue, job_out, latest_job
+from .llm_report import llm_section
+from .models import LLMCall, Scan
 from .schemas import ScanOut
 
 router = APIRouter(prefix='/api')
@@ -71,3 +74,19 @@ def get_check_report(check_id: uuid.UUID, db: DB, limit: Annotated[int, Query(ge
                      offset: Annotated[int, Query(ge=0)] = 0):
     """Отчёт: факты (что измерили сканеры), предположения (AI) и предложенные действия раздельно."""
     return load_report(db, get_check(check_id, db), limit, offset)
+
+
+@router.post('/checks/{check_id}/explanations', status_code=202)
+def request_explanations(check_id: uuid.UUID, db: DB):
+    """Запросить у модели пояснения к находкам завершённой проверки. Работа идёт в фоне; повторный запрос не создаёт дубликат."""
+    job, created = enqueue(db, get_check(check_id, db))
+    return {**job_out(job), 'already_running': not created}
+
+
+@router.get('/checks/{check_id}/explanations')
+def get_explanations(check_id: uuid.UUID, db: DB):
+    """Состояние последнего задания на пояснения и сводка по запросам к модели. Сами пояснения лежат в отчёте проверки."""
+    scan = get_check(check_id, db)
+    calls = db.scalars(select(LLMCall).where(LLMCall.scan_id == scan.id).order_by(LLMCall.created_at.desc(), LLMCall.id.desc())).all()
+    job = latest_job(db, scan.id)
+    return {'job': job_out(job), 'llm': llm_section(calls, job)}

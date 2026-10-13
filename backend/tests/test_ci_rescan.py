@@ -156,6 +156,8 @@ def test_token_acts_only_as_its_owner(two_owners, db):
     ('GET', '/api/checks/00000000-0000-4000-8000-000000000000/report/'), ('POST', '/api/checks/00000000-0000-4000-8000-000000000000'),
     ('GET', '/api/checks/not-a-uuid'), ('DELETE', '/api/checks/00000000-0000-4000-8000-000000000000'),
     ('PUT', '/api/checks'), ('GET', '/api/auth/status/../../projects'),
+    ('POST', '/api/checks/00000000-0000-4000-8000-000000000000/explanations'),
+    ('GET', '/api/checks/00000000-0000-4000-8000-000000000000/explanations'),
 ])
 def test_token_is_refused_everywhere_else(two_owners, method, path):
     with api() as client:

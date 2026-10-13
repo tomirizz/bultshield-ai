@@ -9,7 +9,7 @@ from .fix_runs import effective_status, latest_runs, now
 from .fix_service import supported
 from .image_history import compare_with_previous
 from .llm_report import llm_assumptions, llm_section
-from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, LLMCall, ScanStatus
+from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, LLMCall, LLMJob, ScanStatus
 
 STATUS_TEXT = {
     'FOUND': 'Проблема обнаружена',
@@ -214,7 +214,7 @@ def agent_entries(scan, findings, fix_runs, current):
     return entries
 
 
-def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None, llm_calls=None, changes=None):
+def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None, llm_calls=None, changes=None, llm_job=None):
     """findings уже отсортированы. fixes и analyses: словари finding_id -> последняя запись.
 
     fix_runs: {'latest': запуск агента, 'completed': последний завершённый запуск} или None.
@@ -277,7 +277,7 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0,
         'fix_run': run_summary((fix_runs or {}).get('latest'), current),
         'deployment': deployment_summary((fix_runs or {}).get('evaluated')),
         'assumptions': assumptions + llm_assumptions(llm_calls or [], [i['id'] for i in items]),
-        'llm': llm_section(llm_calls or []),
+        'llm': llm_section(llm_calls or [], llm_job),
         'proposed_actions': actions,
         'limitations': list(LIMITATIONS),
     }
@@ -296,4 +296,4 @@ def load_report(db, scan, limit=100, offset=0):
             analyses.setdefault(item.finding_id, item)
     calls = db.scalars(select(LLMCall).where(LLMCall.scan_id == scan.id).order_by(LLMCall.created_at.desc(), LLMCall.id.desc())).all()
     return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id), llm_calls=calls,
-                        changes=compare_with_previous(db, scan, findings))
+                        changes=compare_with_previous(db, scan, findings), llm_job=db.scalar(select(LLMJob).where(LLMJob.scan_id == scan.id).order_by(LLMJob.created_at.desc(), LLMJob.id.desc()).limit(1)))

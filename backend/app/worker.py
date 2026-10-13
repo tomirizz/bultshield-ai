@@ -322,6 +322,9 @@ def main():
                 from .security_agent import process_next as process_agent
                 if process_agent():
                     continue
+                from .llm_jobs import process_next as process_explanations
+                if process_explanations():
+                    continue
                 time.sleep(2)
                 continue
 

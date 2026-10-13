@@ -256,6 +256,25 @@ class LLMCall(Record, Base):
     result: Mapped[dict | None] = mapped_column(JSONB)
 
 
+class LLMJob(Record, Base):
+    """Фоновое задание: запросить у модели пояснения к находкам завершённой проверки. На одну проверку одно активное задание,
+    поэтому повторный запрос не создаёт дубликатов и не удваивает расходы. Статус задания — это «worker отработал»;
+    удалось ли получить пояснения, видно в summary и в разделе llm отчёта."""
+    __tablename__ = "llm_jobs"
+    __table_args__ = (
+        sa.ForeignKeyConstraint(["project_id", "scan_id"], ["scans.project_id", "scans.id"], ondelete="CASCADE"),
+        sa.CheckConstraint("status IN ('QUEUED','RUNNING','COMPLETED','FAILED')", name="status_values"),
+        sa.Index("uq_llm_jobs_active", "scan_id", unique=True, postgresql_where=sa.text("status IN ('QUEUED','RUNNING')")),
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    scan_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    status: Mapped[str] = mapped_column(sa.String(16), default="QUEUED", server_default="QUEUED")
+    started_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True))
+    summary: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(sa.String(300))
+
+
 class Rescan(Record, Base):
     __tablename__ = "rescans"
     __table_args__ = (
