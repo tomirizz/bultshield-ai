@@ -238,10 +238,17 @@ class FakeProvider:
         else:
             try:
                 data = json.loads(user)
-                package, installed = data['package'], data['installed_version']
-                total = data.get('findings_total', len(data.get('findings', [])))
+                if data.get('kind') == 'change':
+                    summary, risk, fix = self._change(data)
+                    package = installed = None
+                else:
+                    package, installed = data['package'], data['installed_version']
+                    total = data.get('findings_total', len(data.get('findings', [])))
             except (ValueError, KeyError, TypeError):
                 raise LLMBadResponse('Тестовая модель получила непонятный запрос.') from None
+            if package is None:
+                text = self._finish(summary, risk, fix, 'пакет')
+                return LLMResult(text, self.model, estimate_tokens(system + user), estimate_tokens(text))
             status = data.get('status')
             candidates = [c.strip().lstrip('>=^~ ') for v in data.get('fixed_versions') or [] for c in str(v).split(',') if c.strip()]
             target = _closest_version(installed, candidates)
@@ -263,17 +270,37 @@ class FakeProvider:
             else:
                 fix = (f'Обновить {package} до версии {target}, затем запустить тесты и сборку и убедиться, что приложение работает.'
                        if target else f'Для {package} исправленной версии нет: решение нужно принять вручную.')
-            if self.mode == 'invented_version':
-                fix = f'Обновить {package} до версии 9.9.9, затем запустить тесты.'
-            if self.mode == 'leak':
-                risk += ' Ключ доступа: ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2'
-            if self.mode == 'link':
-                fix += ' Подробности: https://example.org/advisory'
-            if self.mode == 'english':
-                summary, risk, fix = ('The package has known vulnerabilities in this version.', 'It may be exploitable if user input reaches it.',
-                                      'Upgrade the package and run the tests again.')
-            text = json.dumps({'summary': summary, 'risk': risk, 'recommendation': fix}, ensure_ascii=False)
+            text = self._finish(summary, risk, fix, package)
         return LLMResult(text, self.model, estimate_tokens(system + user), estimate_tokens(text))
+
+    def _finish(self, summary, risk, fix, package):
+        """Применяет режим имитации сбоя к ответу и собирает JSON."""
+        if self.mode == 'invented_version':
+            fix = f'Обновить {package} до версии 9.9.9, затем запустить тесты.'
+        if self.mode == 'leak':
+            risk += ' Ключ доступа: ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2'
+        if self.mode == 'link':
+            fix += ' Подробности: https://example.org/advisory'
+        if self.mode == 'english':
+            summary, risk, fix = ('The package has known vulnerabilities in this version.', 'It may be exploitable if user input reaches it.',
+                                  'Upgrade the package and run the tests again.')
+        return json.dumps({'summary': summary, 'risk': risk, 'recommendation': fix}, ensure_ascii=False)
+
+    @staticmethod
+    def _change(data):
+        """Описание набора обновлений из переданных данных: только пакеты, версии и CVE из запроса."""
+        packages = data['packages']
+        items = '; '.join(f"{p['package']} с {p['from']} на {p['to']}" for p in packages)
+        cves = sorted({c for p in packages for c in p.get('resolves', [])})
+        summary = f'Изменение обновляет зависимости: {items}.' + (f' Оно закрывает находки: {", ".join(cves[:6])}.' if cves else '')
+        risk = ('Обновление проверено автоматически на копии проекта, но это не доказывает совместимость во всех сценариях. '
+                'Если обновление меняет мажорную версию, поведение пакета могло измениться.')
+        skipped = [m['package'] for m in data.get('not_included', [])]
+        fix = ('Прочитайте изменения в package.json и package-lock.json, запустите тесты проекта и убедитесь, что приложение работает. '
+               'Работающая версия исправлена только после пересборки и повторного скана образа.')
+        if skipped:
+            fix += ' В это изменение не вошли и требуют ручного разбора: ' + ', '.join(skipped[:5]) + '.'
+        return summary, risk, fix
 
 
 def build_provider(settings=None, opener=None):

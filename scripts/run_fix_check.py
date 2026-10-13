@@ -25,6 +25,7 @@ from app.check_report import load_report  # noqa: E402
 from app.database import get_engine  # noqa: E402
 from app.fix_runs import FixRunError, execute_run, record_pull_request  # noqa: E402
 from app.github_pr import GitHubClient, GitHubError, build_pr_body, create_fix_pr, fix_set_from_agent  # noqa: E402
+from app.llm_change import draft_change_note  # noqa: E402
 from app.models import Scan  # noqa: E402
 from run_fix_agent import plan_only  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
@@ -68,6 +69,17 @@ def main():
         create_pull_request(args, run, result)
 
 
+def describe_change(run, fix):
+    """Описание изменения от модели для текста PR. Нет модели или сбой: PR остаётся прежним, причина попадёт в его текст."""
+    with sessionmaker(bind=get_engine(), expire_on_commit=False)() as db:
+        note = draft_change_note(db, run.scan_id, run.id, fix)
+    if note['status'] == 'NOT_CONFIGURED':
+        return None   # модель не подключена: ничего не запрашивалось, текст PR без раздела модели
+    print(f"Описание от модели: {note['status']}" + (f" ({note['message']})" if note['message'] else '')
+          + f", токены {note['input_tokens']}+{note['output_tokens']}, ${note['cost_usd']:.4f}" + (' (повторное использование)' if note['reused'] else ''))
+    return note
+
+
 def create_pull_request(args, run, result):
     if not run.commit_sha:
         sys.exit('PR не создан: проект не является git-репозиторием, версию кода определить нельзя.')
@@ -75,6 +87,7 @@ def create_pull_request(args, run, result):
         fix = fix_set_from_agent(result)
     except GitHubError as exc:
         sys.exit(f'PR не создан: {exc}')
+    fix.note = describe_change(run, fix)
     print('\n--- Текст PR ---\n' + build_pr_body(fix, run.commit_sha))
     if input(f'Создать PR в {args.repo}? Для подтверждения введите имя репозитория: ').strip() != args.repo:
         sys.exit('Не подтверждено, PR не создан.')

@@ -9,7 +9,8 @@ def _latest(calls):
     """Последний запрос по каждому предмету пояснения. calls идут от новых к старым."""
     latest = {}
     for call in calls:
-        if call.subject_key != LIMIT_KEY:
+        # Служебные записи (лимит, описание изменения для PR) не относятся к пояснениям находок.
+        if call.subject_key != LIMIT_KEY and not call.subject_key.startswith('change:'):
             latest.setdefault(call.subject_key, call)
     return latest
 

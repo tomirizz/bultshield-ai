@@ -115,6 +115,7 @@ class FixSet:
     original: dict                  # их исходное содержимое, проверенное песочницей
     manual: list = field(default_factory=list)   # [{'package', 'reason'}]: не вошло в PR
     db_updated_at: str | None = None
+    note: dict | None = None        # описание от модели (llm_change.draft_change_note); None, если не запрашивалось
 
 
 def fix_set_from_agent(result):
@@ -160,6 +161,19 @@ def _md(text, limit=300):
     return _SAFE_TEXT.sub('', text)[:limit]
 
 
+def render_note(note):
+    """Раздел PR с описанием от модели или честное объяснение, почему его нет. Ссылки и разметка из текста убираются."""
+    if note is None:
+        return []
+    head = ['', '### Описание от модели (предположение)']
+    if note['status'] != 'COMPLETED':
+        reason = _md(note.get('message') or 'причина не указана', 200)
+        return head + [f'Модель описание не подготовила: {reason} Текст выше собран без модели; на проверку изменения это не влияет.']
+    return head + [f"- **Что меняется:** {_md(note['summary'], 600)}", f"- **Что может сломаться:** {_md(note['risk'], 600)}",
+                   f"- **На что посмотреть перед слиянием:** {_md(note['recommendation'], 600)}",
+                   '', 'Это текст языковой модели. Он не проверялся сканерами и не заменяет просмотр изменения человеком.']
+
+
 def build_pr_body(fix, base_sha=None):
     rows = ['| Пакет | Было | Стало | Способ | Закрывает |', '|---|---|---|---|---|']
     for item in fix.packages:
@@ -185,6 +199,7 @@ def build_pr_body(fix, base_sha=None):
             lines.append(f"- `{_md(m['package'])}`: {_md(m['reason'])}")
             if m.get('detail'):
                 lines.append(f"  - ошибка: {_md(m['detail'], 200)}")
+    lines += render_note(fix.note)
     lines += ['', '---', 'Сформировано автоматически (BultShield). Слияние выполняет человек.']
     return '\n'.join(lines) + '\n'
 
