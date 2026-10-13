@@ -8,6 +8,14 @@ from .llm import MAX_RESPONSE_BYTES, LLMBadResponse, LLMResult, LLMUnavailable
 RUSSIAN_TEXT = '^[А-Яа-яЁё][А-Яа-яЁёA-Za-z0-9 .,;:()!?/+_@-]*$'
 NO_FIX = ('Сканер не указал исправленную версию. Нужен ручной разбор применимости уязвимости '
           'и вариантов замены или ограничения использования компонента. Автоматическое исправление не подготовлено.')
+CHANGE_RISKS = [
+    'Проверка прошла на копии проекта. Тесты покрывают ограниченный набор сценариев, поэтому риск несовместимости сохраняется.',
+    'Сборка, тесты, запуск и повторное сканирование прошли на копии проекта. Совместимость во всех сценариях не гарантирована.',
+]
+CHANGE_REVIEW = ('Просмотрите изменение перед слиянием. Проверенный патч ещё не применён к работающему приложению; '
+                 'после подтверждения нужны сборка и отдельная проверка опубликованного образа.')
+UNKNOWN_RISK = ('В данных есть идентификатор уязвимости, но нет описания механизма атаки. '
+                'Влияние на приложение зависит от использования компонента и требует ручной проверки.')
 
 
 def task_instruction(user):
@@ -22,7 +30,8 @@ def task_instruction(user):
         return common + ('Это описание уже проверенного изменения для PR. В summary перечисли только обновлённые пакеты '
                          'и точные версии до и после. В risk укажи ограничения тестов и риск совместимости. '
                          'В recommendation напомни о проверке человеком и что изменение ещё не применено к работающему приложению. '
-                         'Пакеты из not_included не исправлены этим изменением.')
+                         'Пакеты из not_included не исправлены этим изменением. Их ошибки не относятся к проверенному набору. '
+                         'Не утверждай, что успешные тесты завершились с ошибкой.')
     return common + ('Это находка сканера, не доказательство эксплуатации. Если описание содержит только номер уязвимости, '
                      'не выдумывай механизм атаки: скажи, что применимость требует проверки. '
                      'Если исправленной версии нет, нужен ручной разбор. Обновление мажорной версии требует проверки совместимости. '
@@ -38,11 +47,42 @@ def response_schema(user):
         payload = json.loads(user)
     except ValueError:
         return schema
-    if isinstance(payload, dict) and 'fixed_versions' in payload and not payload['fixed_versions']:
+    if not isinstance(payload, dict):
+        return schema
+    if payload.get('kind') == 'change':
+        # Verification/approval facts are trusted application data, not model guesses.
+        schema['properties']['risk'] = {'type': 'string', 'enum': CHANGE_RISKS}
+        schema['properties']['recommendation'] = {'type': 'string', 'const': CHANGE_REVIEW}
+        return schema
+    findings = payload.get('findings') or []
+    if findings and all(f.get('title', '').strip() in (f.get('cve'), f"{f.get('cve')}: {payload.get('package')}") for f in findings):
+        schema['properties']['risk'] = {'type': 'string', 'const': UNKNOWN_RISK}
+    status = payload.get('status')
+    if status in ('FIX_VERIFIED', 'FIX_PROPOSED'):
+        schema['properties']['recommendation'] = {'type': 'string', 'const':
+            'Просмотрите предложенное изменение и результат его проверки. Применение требует подтверждения человеком; работающая версия ещё не подтверждена как исправленная.'}
+    elif status == 'FIX_DEPLOYED':
+        schema['properties']['recommendation'] = {'type': 'string', 'const':
+            'Исправление подтверждено повторным сканированием опубликованного образа. Отдельно проверьте, что приложение использует именно этот образ.'}
+    elif 'fixed_versions' in payload and not payload['fixed_versions']:
         # The live small model invented an update for an unmaintained package.
         # No-fix actions are scanner facts, so constrain them instead of trusting generation.
         schema['properties']['recommendation'] = {'type': 'string', 'const': NO_FIX}
+    elif status in ('FOUND', 'MANUAL_REVIEW'):
+        schema['properties']['recommendation'] = {'type': 'string', 'const':
+            'Сверьте исправленные версии и причину статуса в отчёте. До применения обновления проверьте совместимость, сборку, тесты, запуск и повторное сканирование на изолированной копии; смена мажорной версии требует ручного разбора.'}
     return schema
+
+
+def validate_grounding(result, user):
+    """Recheck critical schema constraints server-side; model decoding alone is not validation."""
+    for name, rule in response_schema(user)['properties'].items():
+        if ('const' in rule and result[name] != rule['const']) or ('enum' in rule and result[name] not in rule['enum']):
+            return False
+    payload = json.loads(user)
+    if payload.get('kind') == 'change':
+        return all(all(str(p[k]) in result['summary'] for k in ('package', 'from', 'to')) for p in payload.get('packages', []))
+    return not payload.get('package') or payload['package'] in result['summary']
 
 
 def parse_response(data, model):

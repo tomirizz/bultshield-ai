@@ -57,11 +57,36 @@ def test_live_language_and_no_fix_failures_are_constrained():
 
 
 def test_pr_instruction_is_not_a_scanner_instruction():
-    from app.bult_llm import response_schema, task_instruction
+    from app.bult_llm import CHANGE_REVIEW, response_schema, task_instruction
     payload = '{"kind":"change","packages":[{"package":"qs","from":"6.5.5","to":"6.16.0"}]}'
     assert 'точные версии до и после' in task_instruction(payload)
     assert 'не применено' in task_instruction(payload)
-    assert 'const' not in response_schema(payload)['properties']['recommendation']
+    assert response_schema(payload)['properties']['recommendation']['const'] == CHANGE_REVIEW
+
+
+def test_live_pr_contradiction_is_rejected_even_if_model_ignores_schema():
+    from app.bult_llm import CHANGE_REVIEW, CHANGE_RISKS
+    from app.llm_explain import InvalidResponse, parse_explanation
+    request = '{"kind":"change","packages":[{"package":"qs","from":"6.5.5","to":"6.16.0"}]}'
+    good = {'summary': 'Обновление qs с 6.5.5 до 6.16.0.', 'risk': CHANGE_RISKS[0], 'recommendation': CHANGE_REVIEW}
+    assert parse_explanation(json.dumps(good), request, grounded=True) == good
+    bad = {**good, 'risk': 'Шаги тестов завершились с ошибками после обновления, тесты не запускались без сети'}
+    with pytest.raises(InvalidResponse, match='противоречит'):
+        parse_explanation(json.dumps(bad), request, grounded=True)
+    with pytest.raises(InvalidResponse, match='противоречит'):
+        parse_explanation(json.dumps({**good, 'summary': 'Обновлены некоторые зависимости.'}), request, grounded=True)
+
+
+def test_cve_only_finding_does_not_invent_impact_or_recommend_blind_major_upgrade():
+    from app.bult_llm import UNKNOWN_RISK, response_schema
+    payload = {'package': 'uuid', 'status': 'FOUND', 'fixed_versions': ['11.1.1'],
+               'findings': [{'cve': 'CVE-2026-41907', 'title': 'CVE-2026-41907: uuid'}]}
+    schema = response_schema(json.dumps(payload))['properties']
+    assert schema['risk']['const'] == UNKNOWN_RISK
+    assert 'мажорной версии требует ручного' in schema['recommendation']['const']
+    payload['status'] = 'FIX_DEPLOYED'
+    payload['fixed_versions'] = []
+    assert 'приложение использует именно этот образ' in response_schema(json.dumps(payload))['properties']['recommendation']['const']
 
 
 def test_mixed_script_live_regression_keeps_exact_package_names():

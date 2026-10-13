@@ -23,7 +23,7 @@ from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, bui
 from .llm_explain import SENT_STATUSES, InvalidResponse, parse_explanation
 from .models import LLMCall, Scan
 
-PROMPT_VERSION = 'change-v2'
+PROMPT_VERSION = 'change-v3'
 SUBJECT_PREFIX = 'change:'
 STEPS = ['install', 'tests', 'build', 'start', 'health', 'rescan']
 
@@ -97,7 +97,7 @@ def draft_change_note(db, scan_id, run_id, fix, *, provider=None, settings=None)
         reply = provider.complete(SYSTEM_PROMPT, text, settings.llm_max_output_tokens)
         usage = {'input_tokens': reply.input_tokens, 'output_tokens': reply.output_tokens,
                  'cost_usd': cost_usd(reply.input_tokens, reply.output_tokens, settings)}
-        result = parse_explanation(reply.text, text)
+        result = parse_explanation(reply.text, text, grounded=provider.name == 'bult')
         record = row('COMPLETED', model=reply.model, result=result, **usage)
     except LLMUnavailable as exc:
         record = row('UNAVAILABLE', error_code=exc.code, error_message=str(exc))

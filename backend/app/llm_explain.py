@@ -23,7 +23,7 @@ from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, bui
 from .llm_report import LIMIT_KEY
 from .models import LLMCall, Scan
 
-PROMPT_VERSION = 'explain-v5'
+PROMPT_VERSION = 'explain-v6'
 MAX_FINDINGS_IN_REQUEST = 15
 MAX_TEXT = 600
 SENT_STATUSES = ('COMPLETED', 'UNAVAILABLE', 'INVALID_RESPONSE', 'ERROR')
@@ -67,7 +67,7 @@ WORDS = re.compile(r'[A-Za-zА-Яа-яЁё]+')
 DIGEST = re.compile(r'sha256:[0-9a-f]{16,}')
 
 
-def parse_explanation(text, request_json):
+def parse_explanation(text, request_json, *, grounded=False):
     """Проверяет ответ модели. Возвращает словарь из трёх полей или бросает InvalidResponse.
 
     Принимаются только: JSON-объект ровно с тремя строками нужной длины; русский текст; без ссылок и блоков кода;
@@ -104,6 +104,10 @@ def parse_explanation(text, request_json):
         raise InvalidResponse('invented_version', 'В ответе модели версия, которой нет в данных сканера.')
     if {c.upper() for c in CVE.findall(joined)} - known_cves:
         raise InvalidResponse('invented_cve', 'В ответе модели CVE, которого нет в данных сканера.')
+    if grounded:
+        from .bult_llm import validate_grounding
+        if not validate_grounding(result, request_json):
+            raise InvalidResponse('ungrounded', 'Ответ модели противоречит проверенным фактам или искажает названия пакетов.')
     return result
 
 
@@ -222,7 +226,7 @@ def explain_check(db, scan_id, *, provider=None, settings=None, dry_run=False, m
             reply = provider.complete(SYSTEM_PROMPT, group['text'], settings.llm_max_output_tokens)
             usage = {'input_tokens': reply.input_tokens, 'output_tokens': reply.output_tokens,
                      'cost_usd': cost_usd(reply.input_tokens, reply.output_tokens, settings)}
-            result = parse_explanation(reply.text, group['text'])
+            result = parse_explanation(reply.text, group['text'], grounded=provider.name == 'bult')
             row = _row(scan, group, provider, input_hash, 'COMPLETED', model=reply.model, result=result, **usage)
         except LLMUnavailable as exc:
             row, stop = _row(scan, group, provider, input_hash, 'UNAVAILABLE', error_code=exc.code, error_message=str(exc)), True

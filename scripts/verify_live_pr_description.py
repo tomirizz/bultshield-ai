@@ -62,7 +62,7 @@ def main():
         parser.error('Тестовая база должна отличаться от основной базы приложения.')
     with create_engine(url.set(database='postgres'), isolation_level='AUTOCOMMIT').connect() as admin:
         if not admin.scalar(text('SELECT 1 FROM pg_database WHERE datname=:name'), {'name': args.database_name}):
-            admin.exec_driver_sql(f'CREATE DATABASE "{args.database_name}"')
+            parser.error('Сначала создайте отдельную базу администратором PostgreSQL и назначьте владельцем роль приложения. Права роли приложения расширять не нужно.')
     engine = create_engine(url.set(database=args.database_name))
     Base.metadata.create_all(engine)
     with Session(engine, expire_on_commit=False) as db:
