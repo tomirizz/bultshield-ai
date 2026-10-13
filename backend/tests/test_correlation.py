@@ -76,6 +76,15 @@ def test_overlapping_groups_rejected_and_empty_allowed():
     assert corr.validate_groups({'groups': []}, ['a', 'b']) == []
 
 
+def test_docker_group_cannot_claim_eval_cause():
+    data = proposal()
+    data['groups'][0]['interpretation'] = 'Возможно, несколько находок связаны с использованием eval/exec.'
+    payload = {'candidates': [{'finding_refs': ['F1', 'F2']}],
+               'findings': [{'ref': ref, 'category': 'configuration'} for ref in ('F1', 'F2')]}
+    with pytest.raises(ValueError, match='unrelated'):
+        corr.validate_groups(data, ['a', 'b'], payload)
+
+
 def test_payload_redacts_untrusted_content_preserves_aliases(client, db):
     _, findings, _ = setup(client, db)
     secret = 'ghp_' + 'A' * 36

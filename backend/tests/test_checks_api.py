@@ -29,6 +29,16 @@ def test_image_check_is_queued_and_idempotent(client):
     assert len(client.get('/api/scans').json()) == 1
 
 
+def test_configuration_exposes_capabilities_without_secrets(client):
+    response = client.get('/api/checks-configuration')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['image_registries'] == ['localhost:5001']
+    assert data['runtime_deployment_observed'] is False
+    assert data['sandbox_available_in_web'] is False
+    assert not any('token' in key or 'endpoint' in key or 'password' in key for key in data)
+
+
 def test_repository_check_is_a_source_scan(client):
     body = client.post('/api/checks', json={'repository_id': str(repository(client))}).json()
     assert body['kind'] == 'static' and body['status'] == 'QUEUED'

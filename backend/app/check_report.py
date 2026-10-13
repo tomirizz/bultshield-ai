@@ -16,7 +16,7 @@ STATUS_TEXT = {
     'FIX_PROPOSED': 'Исправление предложено',
     'VERIFYING': 'Идёт проверка исправления',
     'FIX_VERIFIED': 'Исправление прошло проверку',
-    'FIX_DEPLOYED': 'Исправление применено к приложению',
+    'FIX_DEPLOYED': 'Исправление подтверждено в опубликованном образе',
     'MANUAL_REVIEW': 'Требуется ручное вмешательство',
 }
 RUNNING = (ScanStatus.QUEUED, ScanStatus.CLONING, ScanStatus.SCANNING, ScanStatus.ANALYSING,
@@ -141,7 +141,7 @@ def fix_summary(fix):
 
 
 def agent_summary(entry, run):
-    """Описание исправления от агента для отчёта. applied_to_running_app истинно только при подтверждённом применении."""
+    """Проверка опубликованного образа не доказывает, что он запущен в эксплуатации."""
     if entry.get('phase') == 'running':
         return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': 'verifying', 'scope': 'isolated_copy',
                 'applied_to_running_app': False}
@@ -150,7 +150,8 @@ def agent_summary(entry, run):
     proof = entry.get('deployment')
     applied = bool(proof and proof.get('state') == 'gone' and (entry.get('deployment_info') or {}).get('status') == 'CONFIRMED')
     return {'source': 'dependency_agent', 'run_id': str(run.id), 'status': item.get('status'),
-            'scope': 'published_image' if applied else 'isolated_copy', 'applied_to_running_app': applied,
+            'scope': 'published_image' if applied else 'isolated_copy', 'applied_to_running_app': False,
+            'published_image_verified': applied,
             'package': item.get('package'), 'installed_version': item.get('installed'),
             'target_version': item.get('target'), 'major_change': item.get('major_change'),
             'needs_review': item.get('needs_review'), 'reason': item.get('reason'), 'outcome': verification.get('outcome'),

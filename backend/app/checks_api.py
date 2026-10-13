@@ -24,6 +24,19 @@ DB = Annotated[Session, Depends(get_session)]
 COMMIT = re.compile(r'[0-9a-f]{40}')
 
 
+@router.get('/checks-configuration')
+def checks_configuration():
+    """Public-to-the-owner settings only; never credentials or internal endpoints."""
+    from .config import get_settings
+    from .image_scan import allowed_registries
+    settings = get_settings()
+    return {'image_registries': sorted(allowed_registries()), 'rescan_hours': settings.image_rescan_hours,
+            'llm_provider': settings.llm_provider,
+            'sandbox_available_in_web': False,
+            'sandbox_note': 'Проверка обновлений в песочнице пока не подключена к веб-интерфейсу. Исправление нельзя считать проверенным до сборки, тестов, запуска и повторного сканирования.',
+            'runtime_deployment_observed': False}
+
+
 class CheckRequest(BaseModel):
     # Неизвестные поля отклоняются: нельзя молча игнорировать то, что не поддерживается.
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)

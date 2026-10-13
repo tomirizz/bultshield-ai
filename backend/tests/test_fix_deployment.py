@@ -98,7 +98,8 @@ def test_applied_only_with_all_evidence(client, db, worker_db, monkeypatch, chec
     assert set(states(report).values()) == {'FIX_DEPLOYED'}
     assert report['facts']['by_status'] == {'FIX_DEPLOYED': 7, 'MANUAL_REVIEW': 7}
     shown = next(i for i in report['findings']['items'] if i['origin'] == 'app')
-    assert shown['fix']['applied_to_running_app'] is True and shown['fix']['scope'] == 'published_image'
+    assert shown['fix']['applied_to_running_app'] is False and shown['fix']['scope'] == 'published_image'
+    assert shown['fix']['published_image_verified'] is True
     assert NEW_DIGEST in shown['status_reason'] and '№1' in shown['status_reason'] and 'опубликованный образ' in shown['status_reason']
     assert report['deployment']['status'] == 'CONFIRMED' and report['deployment']['scope'] == 'published_image'
     assert not any(a['action'] in ('create_pull_request', 'review_pull_request') for a in report['proposed_actions'] if a['finding_id'] == shown['id'])

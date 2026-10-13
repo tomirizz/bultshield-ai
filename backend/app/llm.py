@@ -311,6 +311,9 @@ def build_provider(settings=None, opener=None):
         raise LLMNotConfigured('ИИ-пояснения выключены (LLM_PROVIDER=disabled).', 'disabled')
     if name == 'fake':
         return FakeProvider(settings.llm_fake_mode)
+    if name == 'bult':
+        from .bult_llm import BultProvider
+        return BultProvider(settings)
     key = settings.llm_api_key.get_secret_value()
     if name == 'openai':
         return OpenAICompatible(api_key=key, model=settings.llm_model, base_url=settings.llm_base_url or 'https://api.openai.com/v1',

@@ -54,7 +54,7 @@ Never copy the example's references unless they exactly match a supplied candida
 def snapshot(db, project_id):
     scans = list(db.scalars(select(Scan.id).where(Scan.id.in_(latest_scans(project_id, completed_only=True))).order_by(Scan.id)))
     findings = list(db.scalars(select(Finding).where(Finding.project_id == project_id, Finding.scan_id.in_(scans)).order_by(Finding.id)))
-    key = hashlib.sha256(json.dumps(['correlation-v2'] + [str(s) for s in scans] + [str(f.id) for f in findings]).encode()).hexdigest()
+    key = hashlib.sha256(json.dumps(['correlation-v3'] + [str(s) for s in scans] + [str(f.id) for f in findings]).encode()).hexdigest()
     return findings, key
 
 
@@ -68,7 +68,7 @@ def payload_for(findings):
     for i, f in enumerate(findings):
         safe = ai.safe_finding(f)
         repo = str(f.scan_id)  # exactly one completed snapshot per repository
-        result.append({'ref': f'F{i + 1}', **{k: safe[k] for k in ('scanner', 'category', 'severity', 'description', 'cve', 'cwe')},
+        result.append({'ref': f'F{i + 1}', **{k: safe[k] for k in ('scanner', 'category', 'severity', 'description', 'cve', 'cwe', 'trusted_guidance')},
                        'repo_ref': alias('repo', repo),
                        'file_ref': alias('file', (repo, f.file)) if f.file else None,
                        'package_ref': alias('package', (repo, f.extra.get('package'))) if f.extra.get('package') else None})
@@ -93,6 +93,11 @@ def validate_groups(data, finding_ids, payload=None):
             raise ValueError('Expected Russian hypothesis')
         if payload is not None and set(members) not in [set(c['finding_refs']) for c in payload['candidates']]:
             raise ValueError('Group lacks shared evidence context')
+        if payload is not None:
+            evidence = [f for f in payload['findings'] if f['ref'] in members]
+            prose = ' '.join((proposal.title, proposal.interpretation, proposal.verification)).lower()
+            if all(f['category'] != 'code' for f in evidence) and re.search(r'eval|exec|разбор данных|происхождени.{0,5} аргумент', prose):
+                raise ValueError('Code remediation is unrelated to this group')
         if len(set(members)) != len(members) or any(m not in refs or m in used for m in members):
             raise ValueError('Invalid or duplicate finding references')
         used.update(members)

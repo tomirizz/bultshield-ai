@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ai_model: str = "qwen2.5-1.5b-instruct"
     ai_timeout_seconds: int = Field(default=240, ge=10, le=600)
     # Подключение внешней модели для пояснений. Ключ хранится только на сервере и не попадает в ответы API и логи.
-    llm_provider: str = 'disabled'  # disabled | fake | openai | anthropic
+    llm_provider: str = 'disabled'  # disabled | fake | bult | openai | anthropic
     llm_api_key: SecretStr = SecretStr('')
     llm_base_url: str = ''
     llm_model: str = ''
@@ -61,8 +61,8 @@ class Settings(BaseSettings):
     @classmethod
     def known_provider(cls, value):
         value = value.strip().lower()
-        if value not in ('disabled', 'fake', 'openai', 'anthropic'):
-            raise ValueError('LLM_PROVIDER: disabled, fake, openai или anthropic')
+        if value not in ('disabled', 'fake', 'bult', 'openai', 'anthropic'):
+            raise ValueError('LLM_PROVIDER: disabled, fake, bult, openai или anthropic')
         return value
 
     @field_validator('public_url')
