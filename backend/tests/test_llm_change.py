@@ -4,7 +4,6 @@ import uuid
 
 import pytest
 from app import llm_change
-from app.config import get_settings
 from app.github_pr import FixSet, build_pr_body
 from app.llm import FakeProvider
 from app.llm_change import change_request, draft_change_note

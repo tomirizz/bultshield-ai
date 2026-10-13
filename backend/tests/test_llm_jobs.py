@@ -222,13 +222,12 @@ def test_report_loader_still_works_without_any_job(db, check):
 # ---- скрипт scripts/request_explanations.py ----
 
 def test_script_waits_for_the_job_and_prints_the_result(check, monkeypatch):
+    import json
     import subprocess
     import sys
     import threading
     from http.server import BaseHTTPRequestHandler, HTTPServer
     from pathlib import Path
-
-    import json
 
     steps = []
 

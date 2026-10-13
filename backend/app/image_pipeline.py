@@ -16,7 +16,7 @@ APP_DESCRIPTION = ('Известная уязвимость в зависимо�
                    'Обновление пакета нужно проверить в изолированной среде.')
 
 
-def normalize_image_findings(results, *, project_id, repository_id, scan_id, image, digest):
+def normalize_image_findings(results, *, project_id, repository_id, scan_id, image, digest, commit_sha=None):
     """Находки из отчёта по образу -> записи Finding. Отпечаток включает digest образа."""
     findings, seen = [], set()
     for result in results:
@@ -31,7 +31,7 @@ def normalize_image_findings(results, *, project_id, repository_id, scan_id, ima
         reason = result.get('manual_reason')
         metadata = {key: result.get(key) for key in ('origin', 'ecosystem', 'package', 'installed_version',
                                                     'fixed_version', 'package_id', 'fix_status', 'manual_reason')}
-        metadata.update(repository_id=str(repository_id), commit_sha=None, scanner_version=TRIVY_VERSION,
+        metadata.update(repository_id=str(repository_id), commit_sha=commit_sha, scanner_version=TRIVY_VERSION,
                         scan_scope='registry_image', source='image', image=image, image_digest=digest,
                         source_redacted=True, severity_source='trivy', review_required=True)
         findings.append(Finding(
@@ -55,15 +55,18 @@ def run_image_pipeline(data, progress, store):
     findings = []
     try:
         result = run_image_scan(reference)
+        # Метка уже проверена парсером отчёта. Без метки коммит остаётся неизвестным.
+        revision = result.report.summary.get('image_revision')
         findings = normalize_image_findings(
             result.report.findings, project_id=data.project_id, repository_id=data.repository_id,
-            scan_id=data.scan_id, image=result.reference, digest=result.digest)
+            scan_id=data.scan_id, image=result.reference, digest=result.digest, commit_sha=revision)
         summary = {**result.summary, 'status': 'COMPLETED', 'version': TRIVY_VERSION, 'source_redacted': True,
                    'finding_count': len(findings)}
         # В БД остаются только пакеты приложения (остальные не нужны). Обрезанный список помечается явно:
         # по неполному списку нельзя утверждать, что пакета в образе нет.
         packages = [{key: p[key] for key in ('name', 'version', 'path')} for p in summary.pop('packages', []) if p['origin'] == 'app']
         summary.update(app_packages=packages[:MAX_APP_PACKAGES], app_packages_truncated=len(packages) > MAX_APP_PACKAGES)
+        progress(data, ScanStatus.SCANNING, commit_sha=revision, step='trivy')
     except ImageScanError as exc:
         summary = {'status': 'FAILED', 'error': str(exc), 'error_code': 'SCANNER_FAILED'}
     summary['duration_seconds'] = round(time.monotonic() - began, 3)

@@ -162,7 +162,9 @@ def test_default_endpoints_and_custom_base_url():
         build_provider(cfg(llm_provider='openai', llm_api_key=key, llm_model='m', llm_base_url='http://evil.example.com/v1'))
 
 
-def test_settings_validate_provider_and_hide_the_key():
+def test_settings_validate_provider_and_hide_the_key(monkeypatch):
+    # Проверяем значение по умолчанию независимо от модели запущенного демо.
+    monkeypatch.delenv('LLM_PROVIDER', raising=False)
     with pytest.raises(ValueError):
         Settings(database_url='postgresql://u:p@localhost/db', llm_provider='gpt-lan')
     settings = Settings(database_url='postgresql://u:p@localhost/db', llm_provider=' OpenAI ', llm_api_key=KEY)

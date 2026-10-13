@@ -51,6 +51,22 @@ def test_image_job_runs_through_the_worker(client, db, worker_db, monkeypatch):
     assert len(client.get('/api/findings', params={'scan_id': str(scan.id)}).json()) == 14
 
 
+@pytest.mark.parametrize('revision', [None, 'abc123' * 6 + 'abcd'])
+def test_image_revision_survives_worker_storage_and_report(client, db, worker_db, monkeypatch, revision):
+    scan = create_image_scan(db, repository(client), REFERENCE)
+    payload = json.loads(FIXTURE.read_text())
+    labels = {} if revision is None else {'org.opencontainers.image.revision': revision}
+    payload['Metadata'].setdefault('ImageConfig', {})['config'] = {'Labels': labels}
+    result = ImageScanResult(REFERENCE, DIGEST, 'linux/amd64', '2026-10-06T07:04:23Z', parse_image_report(payload))
+    monkeypatch.setattr(image_pipeline, 'run_image_scan', lambda reference: result)
+    worker.process_job(worker.claim_job())
+    report = client.get(f'/api/checks/{scan.id}/report').json()
+    assert report['subject']['commit_sha'] == revision
+    assert report['subject']['image_digest'] == DIGEST
+    rows = db.scalars(select(Finding).where(Finding.scan_id == scan.id)).all()
+    assert rows and all(row.extra['commit_sha'] == revision for row in rows)
+
+
 def test_failed_image_scan_is_failed_not_clean(client, db, worker_db, monkeypatch):
     scan = create_image_scan(db, repository(client), REFERENCE)
 
