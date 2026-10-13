@@ -23,7 +23,7 @@ from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, bui
 from .llm_report import LIMIT_KEY
 from .models import LLMCall, Scan
 
-PROMPT_VERSION = 'explain-v3'
+PROMPT_VERSION = 'explain-v4'
 MAX_FINDINGS_IN_REQUEST = 15
 MAX_TEXT = 600
 SENT_STATUSES = ('COMPLETED', 'UNAVAILABLE', 'INVALID_RESPONSE', 'ERROR')
