@@ -81,6 +81,9 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def security_headers(request, call_next):
         response = await call_next(request)
+        # Safari's document viewer otherwise guesses a legacy encoding for JSON.
+        if response.headers.get("Content-Type") == "application/json":
+            response.headers["Content-Type"] = "application/json; charset=utf-8"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "same-origin"
