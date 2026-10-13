@@ -116,3 +116,12 @@
 - [still-detected.json](evidence/still-detected.json) — Повтор после исправления прав: 4 находки закрыты, 3 остались.
 - [still-detected.txt](evidence/still-detected.txt) — Читаемый STILL_DETECTED, пройденные шаги и разница файлов.
 - [summary.txt](evidence/summary.txt) — Первоначальный итог штатного collect_evidence.py.
+
+## Повторная проверка перед публикацией GitHub
+
+По отдельному запросу владельца полностью повторены локальные тесты: **815 прошли, 4 пропущены, 1 предупреждение, 90.08 с**. Сборка интерфейса и Ruff проходят. npm audit обнаружил уязвимость высокой критичности в транзитивной зависимости сборки `source-map-js 1.2.1`; точечное обновление до 1.2.2 закрыло её, повторный audit — 0 известных уязвимостей. Тестовое уязвимое приложение не изменялось.
+
+- [backend-recheck.txt](evidence/backend-recheck.txt) — повторный полный прогон на отдельной тестовой базе.
+- [frontend-audit-before.json](evidence/frontend-audit-before.json) — исходная находка npm audit с идентификатором advisory.
+- [frontend-audit-after.json](evidence/frontend-audit-after.json) — повторная проверка после обновления, 0 находок.
+- [github-preflight.json](evidence/github-preflight.json) — сводка локальной проверки перед отправкой. Результат GitHub Actions проверяется отдельно на удалённом коммите.

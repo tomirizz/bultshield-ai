@@ -1,0 +1,24 @@
+{
+  "phase": "Повторная проверка по запросу владельца перед отправкой в GitHub",
+  "branch": "feature/security-agent",
+  "source_commit": "3d35b6338585b6b1e5fc5d7941e34d7a87cce086",
+  "backend": "815 passed, 4 skipped, 1 warning in 90.08s",
+  "ruff": "All checks passed",
+  "frontend_build": "npm run build: TypeScript and Vite completed successfully",
+  "frontend_audit_before": {
+    "high": 1,
+    "package": "source-map-js",
+    "version": "1.2.1"
+  },
+  "frontend_audit_after": {
+    "total": 0,
+    "package": "source-map-js",
+    "version": "1.2.2"
+  },
+  "runtime": {
+    "frontend_http": 200,
+    "ready_http": 200,
+    "schema_revision": "0013"
+  },
+  "github_ci": "Результат отдельного запуска GitHub Actions нужно смотреть по коммиту удалённой ветки; локальный прогон не заменяет CI."
+}
