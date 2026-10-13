@@ -581,7 +581,7 @@ def test_explanations_are_saved_and_shown_as_assumptions(db, check):
     saved = rows(db)
     assert len(saved) == 6 and {r.status for r in saved} == {'COMPLETED'}
     lodash = next(r for r in saved if r.subject_key == 'package:lodash@4.17.15')
-    assert lodash.provider == 'fake' and lodash.model == 'fake-explainer-1' and lodash.prompt_version == 'explain-v4'
+    assert lodash.provider == 'fake' and lodash.model == 'fake-explainer-1' and lodash.prompt_version == PROMPT_VERSION
     assert len(lodash.finding_ids) == 7 and lodash.request['findings_total'] == 7 and set(lodash.result) == {'summary', 'risk', 'recommendation'}
     assert lodash.input_tokens > 0 and lodash.output_tokens > 0 and float(lodash.cost_usd) > 0 and lodash.duration_ms >= 0
     assert summary['cost_usd'] == pytest.approx(sum(float(r.cost_usd) for r in saved), abs=1e-5)

@@ -51,9 +51,27 @@ def test_live_language_and_no_fix_failures_are_constrained():
     pattern = schema['properties']['summary']['pattern']
     assert re.fullmatch(pattern, 'Проблема в проверенном пакете.')
     assert not re.fullmatch(pattern, 'SSRF漏洞被发现')
-    assert not re.fullmatch(pattern, 'Вulnerability in the request package')
+    assert re.fullmatch(pattern, 'Уязвимость в пакете tough-cookie требует проверки.')
     assert schema['properties']['recommendation'] == {'type': 'string', 'const': NO_FIX}
     assert 'const' not in response_schema('{"fixed_versions":["2.5.6"]}')['properties']['recommendation']
+
+
+def test_pr_instruction_is_not_a_scanner_instruction():
+    from app.bult_llm import response_schema, task_instruction
+    payload = '{"kind":"change","packages":[{"package":"qs","from":"6.5.5","to":"6.16.0"}]}'
+    assert 'точные версии до и после' in task_instruction(payload)
+    assert 'не применено' in task_instruction(payload)
+    assert 'const' not in response_schema(payload)['properties']['recommendation']
+
+
+def test_mixed_script_live_regression_keeps_exact_package_names():
+    from app.llm_explain import InvalidResponse, parse_explanation
+    good = {'summary': 'Уязвимость в tough-cookie требует проверки.',
+            'risk': 'Применимость зависит от использования пакета.',
+            'recommendation': 'Проверьте совместимость обновления перед применением.'}
+    assert parse_explanation(json.dumps(good), '{"package":"tough-cookie"}') == good
+    with pytest.raises(InvalidResponse, match='смешаны алфавиты'):
+        parse_explanation(json.dumps({**good, 'summary': 'Вulnerability в пакете требует проверки.'}), '{}')
 
 
 @pytest.mark.parametrize('value', [None, {}, {'choices': []}, {'choices': [{'finish_reason': 'length'}]}])

@@ -5,9 +5,28 @@ from http.client import HTTPConnection, HTTPException
 from .ai_service import private_endpoint
 from .llm import MAX_RESPONSE_BYTES, LLMBadResponse, LLMResult, LLMUnavailable
 
-RUSSIAN_TEXT = '^[А-Яа-яЁё][А-Яа-яЁё0-9 .,;:()!?/+-]*$'
+RUSSIAN_TEXT = '^[А-Яа-яЁё][А-Яа-яЁёA-Za-z0-9 .,;:()!?/+_@-]*$'
 NO_FIX = ('Сканер не указал исправленную версию. Нужен ручной разбор применимости уязвимости '
           'и вариантов замены или ограничения использования компонента. Автоматическое исправление не подготовлено.')
+
+
+def task_instruction(user):
+    try:
+        change = json.loads(user).get('kind') == 'change'
+    except (ValueError, AttributeError):
+        change = False
+    common = ('Пиши по-русски: по одному-два полных предложения в каждом поле. '
+              'Названия пакетов копируй точно латиницей из данных: не переводи и не транслитерируй. '
+              'Не смешивай русский и латинский алфавиты внутри одного слова. ')
+    if change:
+        return common + ('Это описание уже проверенного изменения для PR. В summary перечисли только обновлённые пакеты '
+                         'и точные версии до и после. В risk укажи ограничения тестов и риск совместимости. '
+                         'В recommendation напомни о проверке человеком и что изменение ещё не применено к работающему приложению. '
+                         'Пакеты из not_included не исправлены этим изменением.')
+    return common + ('Это находка сканера, не доказательство эксплуатации. Если описание содержит только номер уязвимости, '
+                     'не выдумывай механизм атаки: скажи, что применимость требует проверки. '
+                     'Если исправленной версии нет, нужен ручной разбор. Обновление мажорной версии требует проверки совместимости. '
+                     'Не утверждай, что обновление уже выполнено или проверено, когда status=FOUND.')
 
 
 def response_schema(user):
@@ -57,8 +76,8 @@ class BultProvider:
             connection = HTTPConnection(host, port, timeout=self.settings.ai_timeout_seconds)
             schema = response_schema(user)
             body = {'model': self.model, 'temperature': 0.1, 'max_tokens': max_tokens, 'stream': False,
-                    'messages': [{'role': 'system', 'content': system + '\nКаждое поле пиши только русскими словами. Кратко: по одному-два предложения. Не повторяй названия пакетов, версии и CVE: они уже есть в карточке. Если исправленной версии нет, не обещай исправление обновлением.'},
-                                 {'role': 'user', 'content': 'Объясни по-русски. Данные сканера: ' + user}],
+                    'messages': [{'role': 'system', 'content': system + '\n' + task_instruction(user)},
+                                 {'role': 'user', 'content': 'Подготовь ответ по этим данным: ' + user}],
                     'response_format': {'type': 'json_object', 'schema': schema}}
             connection.request('POST', '/v1/chat/completions', body=json.dumps(body).encode(),
                                headers={'Content-Type': 'application/json'})

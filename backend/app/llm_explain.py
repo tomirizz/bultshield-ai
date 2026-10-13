@@ -23,7 +23,7 @@ from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, bui
 from .llm_report import LIMIT_KEY
 from .models import LLMCall, Scan
 
-PROMPT_VERSION = 'explain-v4'
+PROMPT_VERSION = 'explain-v5'
 MAX_FINDINGS_IN_REQUEST = 15
 MAX_TEXT = 600
 SENT_STATUSES = ('COMPLETED', 'UNAVAILABLE', 'INVALID_RESPONSE', 'ERROR')
@@ -63,6 +63,7 @@ VERSION = re.compile(r'\d+\.\d+(?:\.\d+)*')
 CVE = re.compile(r'(?i)\bCVE-\d{4}-\d{4,}\b')
 CONTROL = re.compile(r'[\x00-\x08\x0b-\x1f\x7f]')
 CYRILLIC = re.compile(r'[а-яА-ЯёЁ]')
+WORDS = re.compile(r'[A-Za-zА-Яа-яЁё]+')
 DIGEST = re.compile(r'sha256:[0-9a-f]{16,}')
 
 
@@ -96,6 +97,8 @@ def parse_explanation(text, request_json):
         raise InvalidResponse('secret_in_response', 'В ответе модели есть похожее на секрет.')
     if not CYRILLIC.search(result['summary']):
         raise InvalidResponse('wrong_language', 'Ответ модели не на русском языке.')
+    if any(CYRILLIC.search(word) and re.search('[A-Za-z]', word) for word in WORDS.findall(joined)):
+        raise InvalidResponse('mixed_script', 'В ответе модели смешаны алфавиты внутри слова.')
     known_versions, known_cves = set(VERSION.findall(request_json)), {c.upper() for c in CVE.findall(request_json)}
     if set(VERSION.findall(joined)) - known_versions:
         raise InvalidResponse('invented_version', 'В ответе модели версия, которой нет в данных сканера.')

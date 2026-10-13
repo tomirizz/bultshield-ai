@@ -23,7 +23,7 @@ from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, bui
 from .llm_explain import SENT_STATUSES, InvalidResponse, parse_explanation
 from .models import LLMCall, Scan
 
-PROMPT_VERSION = 'change-v1'
+PROMPT_VERSION = 'change-v2'
 SUBJECT_PREFIX = 'change:'
 STEPS = ['install', 'tests', 'build', 'start', 'health', 'rescan']
 
