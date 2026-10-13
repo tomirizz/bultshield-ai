@@ -22,7 +22,8 @@ def create_image_scan(db, repository_id, reference, *, watch=False, trigger='api
     except ImageScanError as exc:
         raise HTTPException(422, str(exc)) from None
     # Постановку заданий сериализуем так же, как в create_scan, включая лимит очереди.
-    db.scalar(select(User).where(User.id == WORKSPACE_USER_ID).with_for_update())
+    # PostgreSQL NO KEY UPDATE still serializes queue writers but permits audit FK checks.
+    db.scalar(select(User).where(User.id == WORKSPACE_USER_ID).with_for_update(key_share=True))
     repository = db.scalar(select(Repository).where(Repository.id == repository_id).with_for_update())
     if repository is None:
         raise HTTPException(404, 'Репозиторий не найден.')

@@ -198,7 +198,9 @@ def queue_source_scan(repository_id, db, commit=None, trigger='api'):
     Отдельная функция (не маршрут), чтобы commit не стал параметром запроса /api/scans.
     """
     # Serialize submissions in this shared demo workspace, including queue limits.
-    db.scalar(select(User).where(User.id == WORKSPACE_USER_ID).with_for_update())
+    # Serialize submissions without blocking the audit event's foreign-key check.
+    # Duplicate/error responses keep this transaction open until response cleanup.
+    db.scalar(select(User).where(User.id == WORKSPACE_USER_ID).with_for_update(key_share=True))
     repository = db.scalar(
         select(Repository)
         .where(Repository.id == repository_id)
