@@ -48,7 +48,7 @@ def server(explanations=(202, {'id': 'j1', 'status': 'QUEUED'}), report_status=2
 
 
 def run(url, out, *extra):
-    return subprocess.run([sys.executable, str(SCRIPT), '--url', url, '--out', str(out), '--skip-sandbox', '--llm-wait', '5', *extra],
+    return subprocess.run([sys.executable, str(SCRIPT), '--url', url, '--out', str(out), '--skip-sandbox', '--skip-estimate', '--llm-wait', '5', *extra],
                           capture_output=True, text=True, timeout=60)
 
 
