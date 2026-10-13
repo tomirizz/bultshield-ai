@@ -1,7 +1,8 @@
+import uuid
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,11 +34,28 @@ class Settings(BaseSettings):
     llm_price_input_per_mtok: float = Field(default=0, ge=0)
     llm_price_output_per_mtok: float = Field(default=0, ge=0)
     llm_fake_mode: str = 'ok'  # только для провайдера fake: ok | unavailable | garbage | invented_version | leak
+    # Запуск проверок из CI. Токен выключен, пока не задан. Он даёт доступ только к запуску и чтению проверок от имени одного владельца.
+    ci_trigger_token: SecretStr = SecretStr('')
+    ci_trigger_owner_id: str = ''
+    # Через сколько часов worker перепроверяет образы с пометкой «следить». 0 отключает автоматические перепроверки.
+    image_rescan_hours: float = Field(default=24, ge=0, le=720)
     frontend_dist: Path = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
     @property
     def authentication_required(self) -> bool:
         return self.auth_enabled or self.app_env == 'production'
+
+    @model_validator(mode='after')
+    def ci_token_is_complete(self):
+        token = self.ci_trigger_token.get_secret_value()
+        if token:
+            if len(token) < 32:
+                raise ValueError('CI_TRIGGER_TOKEN: не короче 32 символов (например, python -c "import secrets; print(secrets.token_urlsafe(32))")')
+            try:
+                uuid.UUID(self.ci_trigger_owner_id)
+            except ValueError:
+                raise ValueError('CI_TRIGGER_OWNER_ID: нужен идентификатор пользователя-владельца проектов (UUID)') from None
+        return self
 
     @field_validator('llm_provider')
     @classmethod

@@ -191,7 +191,7 @@ def create_scan(data: ScanRequest, db: DB):
     return queue_source_scan(data.repository_id, db)
 
 
-def queue_source_scan(repository_id, db, commit=None):
+def queue_source_scan(repository_id, db, commit=None, trigger='api'):
     """Ставит проверку исходников в очередь. С commit проверяется именно этот коммит, а не конец ветки.
 
     Повторный запрос того же коммита, пока проверка идёт, возвращает уже созданную проверку.
@@ -236,7 +236,7 @@ def queue_source_scan(repository_id, db, commit=None):
         scanner_config=scan_configuration(repository.default_branch),
     )
     if commit is not None:
-        scan.scanner_config = {**scan.scanner_config, "requested_commit": commit, "trigger": "api"}
+        scan.scanner_config = {**scan.scanner_config, "requested_commit": commit, "trigger": trigger}
     db.add(scan)
     db.flush()
 

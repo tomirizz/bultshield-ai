@@ -1,7 +1,7 @@
 """API запуска проверок: на входе репозиторий, коммит или образ, на выходе идентификатор задания, статус и отчёт."""
 import re
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -27,6 +27,9 @@ class CheckRequest(BaseModel):
     repository_id: uuid.UUID
     image: str | None = Field(default=None, max_length=255)
     commit: str | None = Field(default=None, max_length=64)
+    # watch: образ опубликован, его нужно перепроверять по расписанию. trigger: только пометка в отчёте, на права не влияет.
+    watch: bool = False
+    trigger: Literal['api', 'ci'] = 'api'
 
     @field_validator('commit')
     @classmethod
@@ -47,9 +50,11 @@ def create_check(data: CheckRequest, db: DB):
     """
     if data.image is not None and data.commit is not None:
         raise HTTPException(422, 'Укажите либо image, либо commit: образ и коммит проверяются отдельно.')
+    if data.watch and data.image is None:
+        raise HTTPException(422, 'watch нужен только для образа: за исходниками следит непрерывная проверка репозитория.')
     if data.image is not None:
-        return create_image_scan(db, data.repository_id, data.image)
-    return queue_source_scan(data.repository_id, db, data.commit)
+        return create_image_scan(db, data.repository_id, data.image, watch=data.watch, trigger=data.trigger)
+    return queue_source_scan(data.repository_id, db, data.commit, data.trigger)
 
 
 @router.get('/checks/{check_id}', response_model=ScanOut)

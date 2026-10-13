@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from .fix_runs import effective_status, latest_runs, now
 from .fix_service import supported
+from .image_history import compare_with_previous
 from .llm_report import llm_assumptions, llm_section
 from .models import AIAnalysis, Category, Finding, FindingStatus, Fix, LLMCall, ScanStatus
 
@@ -213,7 +214,7 @@ def agent_entries(scan, findings, fix_runs, current):
     return entries
 
 
-def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None, llm_calls=None):
+def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0, fix_runs=None, current=None, llm_calls=None, changes=None):
     """findings уже отсортированы. fixes и analyses: словари finding_id -> последняя запись.
 
     fix_runs: {'latest': запуск агента, 'completed': последний завершённый запуск} или None.
@@ -264,13 +265,15 @@ def build_report(scan, findings, fixes=None, analyses=None, limit=100, offset=0,
                   'created_at': scan.created_at.isoformat() if scan.created_at else None,
                   'completed_at': scan.completed_at.isoformat() if scan.completed_at else None},
         'subject': {'repository_id': str(scan.repository_id), 'commit_sha': scan.commit_sha,
-                    'requested_commit': config.get('requested_commit'),
+                    'requested_commit': config.get('requested_commit'), 'trigger': config.get('trigger'),
+                    'watched': bool(config.get('watch')),
                     'image': (config.get('image') or {}).get('reference'),
                     'image_digest': (results.get('trivy') or {}).get('digest')},
         'verdict': {'result': kind, 'statement': statement},
         'facts': {'scanners': results, 'total_findings': len(findings), 'by_severity': by_severity,
                   'by_origin': by_origin, 'by_status': by_status},
         'findings': {'items': items, 'limit': limit, 'offset': offset, 'total': len(findings)},
+        'changes_since_previous': changes,
         'fix_run': run_summary((fix_runs or {}).get('latest'), current),
         'deployment': deployment_summary((fix_runs or {}).get('evaluated')),
         'assumptions': assumptions + llm_assumptions(llm_calls or [], [i['id'] for i in items]),
@@ -292,4 +295,5 @@ def load_report(db, scan, limit=100, offset=0):
                                .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())):
             analyses.setdefault(item.finding_id, item)
     calls = db.scalars(select(LLMCall).where(LLMCall.scan_id == scan.id).order_by(LLMCall.created_at.desc(), LLMCall.id.desc())).all()
-    return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id), llm_calls=calls)
+    return build_report(scan, findings, fixes, analyses, limit, offset, latest_runs(db, scan.id), llm_calls=calls,
+                        changes=compare_with_previous(db, scan, findings))

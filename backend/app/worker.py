@@ -290,6 +290,7 @@ def main():
     database_available = False
     next_cleanup = 0
     next_poll = 0
+    next_rescan = 0
 
     while True:
         try:
@@ -303,6 +304,10 @@ def main():
                 from .continuous import poll_once
                 poll_once()
                 next_poll = time.monotonic() + 30
+            if time.monotonic() >= next_rescan:
+                from .image_rescan import poll_once as rescan_images
+                rescan_images()
+                next_rescan = time.monotonic() + 60
             recover_stale_jobs()
             data = claim_job()
 

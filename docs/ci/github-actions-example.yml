@@ -1,0 +1,41 @@
+# Пример: проверка образа BultShield после сборки в GitHub Actions. Это шаблон, а не действующий workflow:
+# положите его в .github/workflows/ репозитория ПРИЛОЖЕНИЯ, скопируйте туда же scripts/ci_check.py и замените OWNER/IMAGE.
+#
+# Что нужно настроить:
+#   Variables:  BULTSHIELD_URL (адрес сервиса, https), BULTSHIELD_REPOSITORY_ID (id репозитория в BultShield)
+#   Secrets:    BULTSHIELD_TOKEN (CI_TRIGGER_TOKEN сервера; на сервере также CI_TRIGGER_OWNER_ID)
+# Ограничения: реестр образа должен быть в IMAGE_ALLOWED_REGISTRIES сервера, а образ должен читаться сервером без пароля
+# (публичный или в локальном реестре): вход в приватные реестры пока не поддержан.
+name: build-and-check
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/OWNER/IMAGE:${{ github.sha }}
+
+      # Проверка не блокирует деплой: continue-on-error, а скрипт возвращает 0 и при находках, и при сбое запуска.
+      # Если проверка не запустилась, в интерфейсе запуска будет предупреждение, а не молчаливый «зелёный» результат.
+      - name: BultShield check
+        continue-on-error: true
+        env:
+          BULTSHIELD_URL: ${{ vars.BULTSHIELD_URL }}
+          BULTSHIELD_REPOSITORY_ID: ${{ vars.BULTSHIELD_REPOSITORY_ID }}
+          BULTSHIELD_TOKEN: ${{ secrets.BULTSHIELD_TOKEN }}
+        run: python3 scripts/ci_check.py --image ghcr.io/OWNER/IMAGE@${{ steps.build.outputs.digest }} --watch --wait 600

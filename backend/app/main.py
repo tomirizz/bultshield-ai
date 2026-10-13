@@ -58,12 +58,21 @@ def create_app() -> FastAPI:
     async def authentication(request, call_next):
         if get_settings().authentication_required and request.url.path.startswith('/api/') and not request.url.path.startswith('/api/auth/'):
             from starlette.concurrency import run_in_threadpool
-            user_id = await run_in_threadpool(session_user, request)
-            if user_id is None:
-                return JSONResponse(status_code=401, content={'detail': 'Войдите через GitHub.'})
-            if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.headers.get('origin') != get_settings().public_url:
-                return JSONResponse(status_code=403, content={'detail': 'Недопустимый источник запроса.'})
-            request.state.user_id = user_id
+
+            from .ci_token import ci_access
+            access, ci_owner = ci_access(request)
+            if access == 'denied':
+                return JSONResponse(status_code=403, content={'detail': 'Токен CI разрешает только запуск и чтение проверок.'})
+            if access == 'ok':
+                # Токен вместо cookie: источник запроса не проверяется, потому что браузер токен сам не отправляет.
+                request.state.user_id = ci_owner
+            else:
+                user_id = await run_in_threadpool(session_user, request)
+                if user_id is None:
+                    return JSONResponse(status_code=401, content={'detail': 'Войдите через GitHub.'})
+                if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.headers.get('origin') != get_settings().public_url:
+                    return JSONResponse(status_code=403, content={'detail': 'Недопустимый источник запроса.'})
+                request.state.user_id = user_id
         response = await call_next(request)
         if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/'):
             from starlette.concurrency import run_in_threadpool

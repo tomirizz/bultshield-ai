@@ -11,8 +11,12 @@ ACTIVE = ('QUEUED', 'RUNNING')
 QUEUE_LIMIT = 10
 
 
-def create_image_scan(db, repository_id, reference):
-    """Ставит проверку образа в очередь. Повторный запрос того же образа возвращает уже идущую проверку."""
+def create_image_scan(db, repository_id, reference, *, watch=False, trigger='api', rescan_of=None):
+    """Ставит проверку образа в очередь. Повторный запрос того же образа возвращает уже идущую проверку.
+
+    watch: образ опубликован, worker будет перепроверять его по расписанию (решает последняя проверка этого образа).
+    trigger: что запустило проверку: api (по запросу), ci (после сборки) или schedule (перепроверка по расписанию).
+    """
     try:
         ref = parse_reference(reference)
     except ImageScanError as exc:
@@ -26,6 +30,9 @@ def create_image_scan(db, repository_id, reference):
         Scan.repository_id == repository.id, Scan.kind == 'image', ScanJob.status.in_(ACTIVE))).all()
     for scan in running:
         if (scan.scanner_config.get('image') or {}).get('reference') == ref.text:
+            if bool(scan.scanner_config.get('watch')) != watch:
+                scan.scanner_config = {**scan.scanner_config, 'watch': watch}
+                db.commit()
             return scan
     pending = db.scalar(select(func.count()).select_from(ScanJob).where(ScanJob.status.in_(ACTIVE))) or 0
     if pending >= QUEUE_LIMIT:
@@ -34,7 +41,8 @@ def create_image_scan(db, repository_id, reference):
                 status=ScanStatus.QUEUED, target_url=ref.repository,
                 scanner_config={'scanners': ['trivy'], 'scope': 'registry_image', 'branch': repository.default_branch,
                                 'image': {'reference': ref.text, 'repository': ref.repository},
-                                'trivy_version': TRIVY_VERSION})
+                                'trivy_version': TRIVY_VERSION, 'watch': watch, 'trigger': trigger,
+                                **({'rescan_of': str(rescan_of)} if rescan_of else {})})
     db.add(scan)
     db.flush()
     db.add(ScanJob(scan_id=scan.id, status='QUEUED'))
