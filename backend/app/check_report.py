@@ -159,6 +159,23 @@ def agent_summary(entry, run):
             'deployment': proof}
 
 
+def version_choices(run):
+    """Кто и как выбрал версию для каждого пакета: модель (и принят ли её выбор после проверки) или правила. Без запуска модели список пуст."""
+    result = []
+    for item in (run.items or []):
+        llm = item.get('llm_plan')
+        if not llm or not item.get('target'):
+            continue
+        result.append({'package': item['package'], 'installed': item.get('installed'), 'rule_target': llm.get('default'),
+                       'final_target': llm.get('final_target') or item.get('target'), 'model_target': llm.get('target'),
+                       'status': llm.get('status'), 'accepted': llm.get('accepted'),
+                       'agreed_with_rules': llm.get('target') == llm.get('default'), 'chosen_by': 'model' if llm.get('accepted') else 'rules',
+                       'reason': llm.get('reason'), 'risk': llm.get('risk'), 'needs_review': bool(llm.get('needs_review')),
+                       'rejected_outcome': llm.get('rejected_outcome'), 'message': llm.get('message'), 'model': llm.get('model'),
+                       'input_tokens': llm.get('input_tokens', 0), 'output_tokens': llm.get('output_tokens', 0)})
+    return result
+
+
 def run_summary(run, current):
     """Сводка запуска агента для отчёта: что проверялось, на каком коде и образе, чем закончилось."""
     if run is None:
@@ -168,7 +185,7 @@ def run_summary(run, current):
             'commit_sha': run.commit_sha, 'image_digest': run.image_digest, 'summary': run.summary or {},
             'combined': ({key: combined.get(key) for key in ('packages', 'outcome', 'reason', 'scan_db_updated_at')}
                          if combined else None),
-            'pull_request': run.pull_request, 'error_message': run.error_message,
+            'version_choices': version_choices(run), 'pull_request': run.pull_request, 'error_message': run.error_message,
             'started_at': run.started_at.isoformat() if run.started_at else None,
             'completed_at': run.completed_at.isoformat() if run.completed_at else None}
 

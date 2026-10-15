@@ -18,11 +18,22 @@ UNKNOWN_RISK = ('В данных есть идентификатор уязви�
                 'Влияние на приложение зависит от использования компонента и требует ручной проверки.')
 
 
-def task_instruction(user):
+def _payload(user):
+    """Данные запроса без добавленного при повторе замечания об отклонённом ответе."""
     try:
-        change = json.loads(user).get('kind') == 'change'
-    except (ValueError, AttributeError):
-        change = False
+        data = json.loads(user.split('\n\nПредыдущий ответ отклонён', 1)[0])
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def task_instruction(user):
+    kind = _payload(user).get('kind')
+    change = kind == 'change'
+    if kind == 'plan':
+        return ('Выбери одну версию из candidates: target должен точно совпадать с одной из них. Предпочитай ту же мажорную версию, '
+                'что у installed_version. Пиши по-русски: по одному-два полных предложения в reason и risk. '
+                'Названия пакетов и версии копируй точно из данных. Не смешивай русский и латинский алфавиты внутри одного слова.')
     common = ('Пиши по-русски: по одному-два полных предложения в каждом поле. '
               'Названия пакетов копируй точно латиницей из данных: не переводи и не транслитерируй. '
               'Не смешивай русский и латинский алфавиты внутри одного слова. ')
@@ -39,15 +50,17 @@ def task_instruction(user):
 
 
 def response_schema(user):
+    payload = _payload(user)
+    if payload.get('kind') == 'plan':
+        text = {'type': 'string', 'minLength': 20, 'maxLength': 500, 'pattern': RUSSIAN_TEXT}
+        return {'type': 'object', 'properties': {'target': {'type': 'string', 'enum': [c['version'] for c in payload.get('candidates', [])]},
+                                                'reason': text, 'risk': text, 'needs_review': {'type': 'boolean'}},
+                'required': ['target', 'reason', 'risk', 'needs_review'], 'additionalProperties': False}
     schema = {'type': 'object', 'properties': {
         name: {'type': 'string', 'minLength': 20, 'maxLength': 600, 'pattern': RUSSIAN_TEXT}
         for name in ('summary', 'risk', 'recommendation')},
         'required': ['summary', 'risk', 'recommendation'], 'additionalProperties': False}
-    try:
-        payload = json.loads(user)
-    except ValueError:
-        return schema
-    if not isinstance(payload, dict):
+    if not payload:
         return schema
     if payload.get('kind') == 'change':
         # Verification/approval facts are trusted application data, not model guesses.
@@ -79,7 +92,9 @@ def validate_grounding(result, user):
     for name, rule in response_schema(user)['properties'].items():
         if ('const' in rule and result[name] != rule['const']) or ('enum' in rule and result[name] not in rule['enum']):
             return False
-    payload = json.loads(user)
+    payload = _payload(user)
+    if payload.get('kind') == 'plan':
+        return True   # версия уже ограничена списком candidates (enum), пакета в тексте может не быть
     if payload.get('kind') == 'change':
         return all(all(str(p[k]) in result['summary'] for k in ('package', 'from', 'to')) for p in payload.get('packages', []))
     return not payload.get('package') or payload['package'] in result['summary']

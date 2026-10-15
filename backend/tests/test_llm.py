@@ -871,3 +871,124 @@ def test_script_without_a_provider_explains_what_to_do(db, check):
 def test_script_unknown_check(db, check):
     done = run_script(uuid.uuid4())
     assert done.returncode != 0 and 'Проверка не найдена' in done.stderr
+
+
+# ---- устойчивость внешнего провайдера: повторы и параметры под модель ----
+
+OK_REPLY = json.dumps({'model': 'm-1', 'choices': [{'message': {'content': '{"a": 1}'}, 'finish_reason': 'stop'}],
+                       'usage': {'prompt_tokens': 7, 'completion_tokens': 3}}).encode()
+
+
+class FakeOpener:
+    """Подставной opener: отдаёт по очереди ответы или HTTP-ошибки и запоминает тела запросов."""
+    def __init__(self, *steps):
+        self.steps, self.bodies = list(steps), []
+
+    def __call__(self, request, timeout):
+        self.bodies.append(json.loads(request.data))
+        step = self.steps.pop(0)
+        if isinstance(step, tuple):
+            code, headers = step
+            raise urllib.error.HTTPError(request.full_url, code, 'err', headers, io.BytesIO(b''))
+        return io.BytesIO(step)
+
+
+def http_provider(opener, cls=OpenAICompatible, **options):
+    pauses = []
+    provider = cls(api_key=KEY, model='m', base_url='https://api.example.com/v1', timeout=5, opener=opener, sleep=pauses.append, **options)
+    return provider, pauses
+
+
+def test_temporary_failures_are_retried_with_a_pause_and_then_succeed():
+    opener = FakeOpener((503, None), (429, None), OK_REPLY)
+    provider, pauses = http_provider(opener, retries=2)
+    assert provider.complete('s', 'u', 10).text == '{"a": 1}'
+    assert len(opener.bodies) == 3 and pauses == [1.0, 2.0]   # пауза растёт, ответ получен
+
+
+def test_retry_count_is_limited_and_the_last_error_is_reported():
+    opener = FakeOpener((503, None), (503, None), OK_REPLY)
+    provider, pauses = http_provider(opener, retries=1)
+    with pytest.raises(LLMUnavailable) as excinfo:
+        provider.complete('s', 'u', 10)
+    assert excinfo.value.code == 'http_503' and len(opener.bodies) == 2 and len(pauses) == 1
+
+
+def test_no_retries_by_default_and_other_errors_are_never_retried():
+    for code in (400, 404, 401):
+        opener = FakeOpener((code, None), OK_REPLY)
+        provider, pauses = http_provider(opener, retries=3)
+        with pytest.raises(LLMError):
+            provider.complete('s', 'u', 10)
+        assert len(opener.bodies) == 1 and pauses == []
+    opener = FakeOpener((503, None), OK_REPLY)
+    provider, _ = http_provider(opener)
+    with pytest.raises(LLMUnavailable):
+        provider.complete('s', 'u', 10)
+    assert len(opener.bodies) == 1
+
+
+def test_network_errors_and_timeouts_are_not_retried():
+    class Down:
+        calls = 0
+
+        def __call__(self, request, timeout):
+            Down.calls += 1
+            raise urllib.error.URLError(TimeoutError())
+
+    provider, pauses = http_provider(Down(), retries=3)
+    with pytest.raises(LLMUnavailable) as excinfo:
+        provider.complete('s', 'u', 10)
+    assert excinfo.value.code == 'network' and Down.calls == 1 and pauses == []
+
+
+def test_retry_after_header_sets_the_pause_but_it_is_capped():
+    short, pauses = http_provider(FakeOpener((429, {'Retry-After': '3'}), OK_REPLY), retries=1)
+    short.complete('s', 'u', 10)
+    assert pauses == [3.0]
+    long_, pauses = http_provider(FakeOpener((429, {'Retry-After': '120'}), OK_REPLY), retries=1)
+    long_.complete('s', 'u', 10)
+    assert pauses == [OpenAICompatible.MAX_PAUSE]
+    junk, pauses = http_provider(FakeOpener((503, {'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT'}), OK_REPLY), retries=1)
+    junk.complete('s', 'u', 10)
+    assert pauses == [1.0]   # дата вместо секунд не используется
+
+
+def test_request_body_adapts_to_the_model():
+    opener = FakeOpener(OK_REPLY)
+    http_provider(opener)[0].complete('s', 'u', 77)
+    assert opener.bodies[0]['max_tokens'] == 77 and opener.bodies[0]['temperature'] == 0 and 'response_format' not in opener.bodies[0]
+    opener = FakeOpener(OK_REPLY)
+    http_provider(opener, max_tokens_param='max_completion_tokens', omit_temperature=True, json_mode=True)[0].complete('s', 'u', 77)
+    body = opener.bodies[0]
+    assert body['max_completion_tokens'] == 77 and 'max_tokens' not in body and 'temperature' not in body
+    assert body['response_format'] == {'type': 'json_object'}
+
+
+def test_anthropic_body_can_omit_temperature():
+    reply = json.dumps({'model': 'c', 'content': [{'type': 'text', 'text': 'x'}], 'usage': {'input_tokens': 1, 'output_tokens': 1}}).encode()
+    opener = FakeOpener(reply)
+    http_provider(opener, AnthropicProvider, omit_temperature=True)[0].complete('s', 'u', 10)
+    assert 'temperature' not in opener.bodies[0] and opener.bodies[0]['max_tokens'] == 10
+
+
+def test_unknown_tokens_parameter_is_a_configuration_error():
+    with pytest.raises(LLMNotConfigured):
+        http_provider(FakeOpener(), max_tokens_param='max_new_tokens')
+
+
+def test_build_provider_passes_the_options_from_settings():
+    provider = build_provider(cfg(llm_provider='openai', llm_api_key=SecretStr(KEY), llm_model='m', llm_retries=2, llm_omit_temperature=True,
+                                  llm_max_tokens_param='max_completion_tokens', llm_json_mode=True, llm_max_output_tokens=16000))
+    assert (provider._retries, provider._omit_temperature, provider._tokens_param, provider._json_mode) == (2, True, 'max_completion_tokens', True)
+    with pytest.raises(LLMNotConfigured):
+        build_provider(cfg(llm_provider='openai', llm_api_key=SecretStr(KEY), llm_model='m', llm_max_tokens_param='bad'))
+    default = Settings(database_url='postgresql://u:p@localhost/db')
+    assert default.llm_retries == 1 and default.llm_max_tokens_param == 'max_tokens' and not default.llm_omit_temperature and not default.llm_json_mode
+
+
+def test_secret_never_appears_in_retry_errors():
+    provider, _ = http_provider(FakeOpener((503, None), (503, None)), retries=1)
+    with pytest.raises(LLMUnavailable) as excinfo:
+        provider.complete('s', 'u', 10)
+    assert KEY not in str(excinfo.value)

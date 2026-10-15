@@ -26,6 +26,7 @@ from app.database import get_engine  # noqa: E402
 from app.fix_runs import FixRunError, execute_run, record_pull_request  # noqa: E402
 from app.github_pr import GitHubClient, GitHubError, build_pr_body, create_fix_pr, fix_set_from_agent  # noqa: E402
 from app.llm_change import draft_change_note  # noqa: E402
+from app.llm_plan import make_planner  # noqa: E402
 from app.models import Scan  # noqa: E402
 from run_fix_agent import plan_only  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
@@ -37,6 +38,7 @@ def main():
     parser.add_argument('project')
     parser.add_argument('--commit', help='полный SHA коммита проекта (по умолчанию из git проекта)')
     parser.add_argument('--plan-only', action='store_true', help='только план версий, без Docker')
+    parser.add_argument('--no-llm-plan', action='store_true', help='не просить модель выбирать версии (только правила)')
     parser.add_argument('--create-pr', action='store_true', help='после проверки создать PR (с подтверждением)')
     parser.add_argument('--repo', help='владелец/репозиторий на GitHub (для --create-pr)')
     parser.add_argument('--base-branch', default='main')
@@ -49,6 +51,8 @@ def main():
         sys.exit('--create-pr нужен вместе с --repo и без --plan-only: PR создаётся только по настоящей проверке.')
     kwargs = {'verify': plan_only} if args.plan_only else {}
     with sessionmaker(bind=get_engine(), expire_on_commit=False)() as db:
+        if not args.no_llm_plan:
+            kwargs['planner'] = make_planner(db, args.check_id)   # без подключённой модели выбирают правила
         print('Проверяю обновления в песочнице (несколько минут)...')
         try:
             run, result = execute_run(db, args.check_id, project, commit_sha=args.commit, **kwargs)
@@ -63,6 +67,11 @@ def main():
             continue
         print(f"  {item['status_text']:<38} {item['rule_id']:<16} {item['component']} {item['installed_version']}"
               + (f"\n      {item['status_reason']}" if item['status_reason'] else ''))
+    for choice in section['version_choices']:
+        who = 'модель' if choice['accepted'] else 'правила'
+        print(f"  Версия {choice['package']}: {choice['installed']} -> {choice['final_target']} (выбрали: {who}; "
+              f"модель предложила {choice['model_target'] or 'ничего'}, правила {choice['rule_target']}"
+              + (f"; отказ: {choice['rejected_outcome']}" if choice['rejected_outcome'] else '') + ')')
     print(f"\nПо статусам: {report['facts']['by_status']}")
     print('Это результат проверки в песочнице: работающее приложение не исправлено.')
     if args.create_pr:

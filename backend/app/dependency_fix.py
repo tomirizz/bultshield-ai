@@ -44,6 +44,59 @@ def requirement(installed, fixed):
     return None, 'исправленная версия не новее установленной'
 
 
+MAX_CANDIDATES = 6
+
+
+def covers(version, fixed):
+    """Закрывает ли версия находку по данным сканера (поле «исправлено в» из Trivy).
+
+    Версия закрывает находку, если она не ниже исправленной в той же мажорной ветке или принадлежит более новой мажорной ветке,
+    чем любая из перечисленных исправленных версий. Если формат исправленной версии не поддержан, ответ «нет»: лучше
+    не предлагать версию, чем предложить непроверяемую.
+    """
+    text = (fixed or '').strip()
+    if not text:
+        return False
+    bound = _LOWER_BOUND.fullmatch(text)
+    if bound:
+        return version >= parse_version(bound.group(1))
+    fixes = [parse_version(part) for part in text.split(',')]
+    if any(f is None for f in fixes):
+        return False
+    return any(version >= f and version[0] == f[0] for f in fixes) or version[0] > max(f[0] for f in fixes)
+
+
+def candidate_versions(installed, findings, available, deprecated=(), *, default=None):
+    """Версии, из которых можно выбирать обновление (код определяет набор, выбирать из него может и модель).
+
+    Версия попадает в набор, только если: она стабильная (x.y.z), новее установленной, не помечена устаревшей, закрывает каждую
+    находку, у которой исправление известно (covers). В каждой мажорной ветке берутся самая ранняя и самая поздняя подходящие
+    версии. Набор не больше MAX_CANDIDATES; default (версия детерминированного плана) всегда в нём остаётся.
+    Возвращает список {'version', 'major_change'} от меньших версий к большим.
+    """
+    current = parse_version(installed)
+    if current is None or not available:
+        return []
+    needs = [fixed for _, fixed in findings if (fixed or '').strip()]
+    blocked = set(deprecated)
+    ok = sorted(v for v in (parse_version(item) for item in available)
+                if v is not None and v > current and format_version(v) not in blocked
+                and all(covers(v, fixed) for fixed in needs))
+    lines = {}
+    for version in ok:
+        lines.setdefault(version[0], []).append(version)
+    keep = set()
+    for versions in lines.values():
+        keep.update((versions[0], versions[-1]))
+    wanted = parse_version(default) if default else None
+    if wanted is not None:
+        keep.add(wanted)
+    ordered = sorted(keep, key=lambda v: (v[0] != current[0], v))
+    if len(ordered) > MAX_CANDIDATES:
+        ordered = [v for v in ordered if v == wanted] + [v for v in ordered if v != wanted][:MAX_CANDIDATES - 1]
+    return [{'version': format_version(v), 'major_change': v[0] != current[0]} for v in sorted(ordered)]
+
+
 @dataclass(frozen=True)
 class UpdatePlan:
     status: str                   # 'PROPOSE' (можно предложить обновление) или 'MANUAL'

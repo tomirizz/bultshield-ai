@@ -27,13 +27,18 @@ class Settings(BaseSettings):
     llm_base_url: str = ''
     llm_model: str = ''
     llm_timeout_seconds: int = Field(default=30, ge=3, le=120)
-    llm_max_output_tokens: int = Field(default=600, ge=100, le=2000)
+    llm_max_output_tokens: int = Field(default=600, ge=100, le=16000)  # модели с «рассуждением» тратят часть лимита на мысли: ставьте 4000 и больше
+    # Совместимость с разными моделями (только openai и anthropic). Новые модели OpenAI требуют max_completion_tokens и не принимают temperature.
+    llm_max_tokens_param: str = 'max_tokens'   # max_tokens | max_completion_tokens (только openai)
+    llm_omit_temperature: bool = False         # true: не отправлять temperature
+    llm_json_mode: bool = False                # true: просить JSON-режим (только openai-совместимые API, которые его поддерживают)
+    llm_retries: int = Field(default=1, ge=0, le=3)   # повторов при 429 и 5xx
     llm_max_input_chars: int = Field(default=6000, ge=500, le=20000)
     llm_max_calls_per_check: int = Field(default=20, ge=1, le=100)
     llm_daily_call_limit: int = Field(default=200, ge=1, le=10000)
     llm_price_input_per_mtok: float = Field(default=0, ge=0)
     llm_price_output_per_mtok: float = Field(default=0, ge=0)
-    llm_fake_mode: str = 'ok'  # только для провайдера fake: ok | unavailable | garbage | invented_version | leak
+    llm_fake_mode: str = 'ok'  # только для провайдера fake: ok | unavailable | garbage | invented_version | leak | english | link | prefer_latest
     # Запуск проверок из CI. Токен выключен, пока не задан. Он даёт доступ только к запуску и чтению проверок от имени одного владельца.
     ci_trigger_token: SecretStr = SecretStr('')
     ci_trigger_owner_id: str = ''

@@ -104,3 +104,31 @@ def test_bult_rejects_bad_or_truncated_reply(value):
     from app.bult_llm import parse_response
     with pytest.raises(LLMBadResponse):
         parse_response(value, 'qwen')
+
+
+PLAN_REQUEST = json.dumps({'kind': 'plan', 'package': 'qs', 'installed_version': '6.5.5', 'default': '6.5.6',
+                           'candidates': [{'version': '6.5.6', 'major_change': False}, {'version': '6.16.0', 'major_change': True}],
+                           'findings': [{'id': 'CVE-2022-24999', 'severity': 'HIGH', 'fixed_in': '6.5.6'}]}, ensure_ascii=False)
+
+
+def test_plan_schema_limits_the_choice_to_the_allowed_versions():
+    from app.bult_llm import response_schema, task_instruction, validate_grounding
+    schema = response_schema(PLAN_REQUEST)
+    assert schema['properties']['target']['enum'] == ['6.5.6', '6.16.0'] and schema['additionalProperties'] is False
+    assert set(schema['required']) == {'target', 'reason', 'risk', 'needs_review'} and schema['properties']['needs_review'] == {'type': 'boolean'}
+    assert 'candidates' in task_instruction(PLAN_REQUEST)
+    good = {'target': '6.5.6', 'reason': 'Версия остаётся в той же ветке.', 'risk': 'Совместимость нужно проверить тестами.', 'needs_review': False}
+    assert validate_grounding(good, PLAN_REQUEST)
+    assert not validate_grounding({**good, 'target': '7.0.0'}, PLAN_REQUEST)
+
+
+def test_plan_retry_note_does_not_break_the_schema():
+    from app.bult_llm import response_schema, task_instruction
+    retry = PLAN_REQUEST + '\n\nПредыдущий ответ отклонён: версия не из набора. Ответь только JSON-объектом.'
+    assert response_schema(retry) == response_schema(PLAN_REQUEST) and task_instruction(retry) == task_instruction(PLAN_REQUEST)
+
+
+def test_plan_without_candidates_cannot_be_answered_with_any_version():
+    from app.bult_llm import response_schema
+    empty = json.dumps({'kind': 'plan', 'package': 'qs', 'installed_version': '1.0.0', 'candidates': []})
+    assert response_schema(empty)['properties']['target']['enum'] == []

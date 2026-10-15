@@ -67,12 +67,31 @@ WORDS = re.compile(r'[A-Za-zА-Яа-яЁё]+')
 DIGEST = re.compile(r'sha256:[0-9a-f]{16,}')
 
 
-def parse_explanation(text, request_json, *, grounded=False):
-    """Проверяет ответ модели. Возвращает словарь из трёх полей или бросает InvalidResponse.
+def check_free_text(fields, language_field, request_json):
+    """Общие проверки текста модели (пояснение, описание изменения, выбор версии). fields: словарь строк, language_field: строка,
+    по которой проверяется язык. Бросает InvalidResponse. Версии и CVE в тексте допустимы только те, что есть в запросе."""
+    joined = '\n'.join(str(value) for value in fields.values())
+    if CONTROL.search(joined):
+        raise InvalidResponse('bad_characters', 'В ответе модели управляющие символы.')
+    if LINK.search(joined):
+        raise InvalidResponse('contains_link', 'В ответе модели есть ссылка.')
+    if '```' in joined:
+        raise InvalidResponse('contains_code', 'В ответе модели блок кода.')
+    if redact(joined)[1]:
+        raise InvalidResponse('secret_in_response', 'В ответе модели есть похожее на секрет.')
+    if not CYRILLIC.search(language_field):
+        raise InvalidResponse('wrong_language', 'Ответ модели не на русском языке.')
+    if any(CYRILLIC.search(word) and re.search('[A-Za-z]', word) for word in WORDS.findall(joined)):
+        raise InvalidResponse('mixed_script', 'В ответе модели смешаны алфавиты внутри слова.')
+    known_versions, known_cves = set(VERSION.findall(request_json)), {c.upper() for c in CVE.findall(request_json)}
+    if set(VERSION.findall(joined)) - known_versions:
+        raise InvalidResponse('invented_version', 'В ответе модели версия, которой нет в данных сканера.')
+    if {c.upper() for c in CVE.findall(joined)} - known_cves:
+        raise InvalidResponse('invented_cve', 'В ответе модели CVE, которого нет в данных сканера.')
 
-    Принимаются только: JSON-объект ровно с тремя строками нужной длины; русский текст; без ссылок и блоков кода;
-    без секретов; версии и CVE только из запроса (выдуманные версии отвергаются, как и неверные).
-    """
+
+def load_object(text):
+    """JSON-объект из ответа модели (допускается обёртка в блок кода). Иначе InvalidResponse."""
     body = text.strip()
     if body.startswith('```'):
         body = re.sub(r'^```[a-zA-Z]*\s*|\s*```$', '', body).strip()
@@ -82,28 +101,21 @@ def parse_explanation(text, request_json, *, grounded=False):
         raise InvalidResponse('not_json', 'Ответ модели не JSON.') from None
     if not isinstance(data, dict):
         raise InvalidResponse('not_json', 'Ответ модели не JSON-объект.')
+    return data
+
+
+def parse_explanation(text, request_json, *, grounded=False):
+    """Проверяет ответ модели. Возвращает словарь из трёх полей или бросает InvalidResponse.
+
+    Принимаются только: JSON-объект ровно с тремя строками нужной длины; русский текст; без ссылок и блоков кода;
+    без секретов; версии и CVE только из запроса (выдуманные версии отвергаются, как и неверные).
+    """
+    data = load_object(text)
     try:
         result = LLMExplanation.model_validate(data).model_dump()
     except ValidationError:
         raise InvalidResponse('schema', 'Ответ модели не соответствует формату (поля или длина).') from None
-    joined = '\n'.join(result.values())
-    if CONTROL.search(joined):
-        raise InvalidResponse('bad_characters', 'В ответе модели управляющие символы.')
-    if LINK.search(joined):
-        raise InvalidResponse('contains_link', 'В ответе модели есть ссылка.')
-    if '```' in joined:
-        raise InvalidResponse('contains_code', 'В ответе модели блок кода.')
-    if redact(joined)[1]:
-        raise InvalidResponse('secret_in_response', 'В ответе модели есть похожее на секрет.')
-    if not CYRILLIC.search(result['summary']):
-        raise InvalidResponse('wrong_language', 'Ответ модели не на русском языке.')
-    if any(CYRILLIC.search(word) and re.search('[A-Za-z]', word) for word in WORDS.findall(joined)):
-        raise InvalidResponse('mixed_script', 'В ответе модели смешаны алфавиты внутри слова.')
-    known_versions, known_cves = set(VERSION.findall(request_json)), {c.upper() for c in CVE.findall(request_json)}
-    if set(VERSION.findall(joined)) - known_versions:
-        raise InvalidResponse('invented_version', 'В ответе модели версия, которой нет в данных сканера.')
-    if {c.upper() for c in CVE.findall(joined)} - known_cves:
-        raise InvalidResponse('invented_cve', 'В ответе модели CVE, которого нет в данных сканера.')
+    check_free_text(result, result['summary'], request_json)
     if grounded:
         from .bult_llm import validate_grounding
         if not validate_grounding(result, request_json):

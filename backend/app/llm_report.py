@@ -1,6 +1,7 @@
 """Как пояснения модели показываются в отчёте: отдельно от фактов и без влияния на статусы."""
 
 LIMIT_KEY = '*limit'
+SERVICE_PREFIXES = ('change:', 'plan:')   # запросы не про находки: описание изменения для PR и выбор версии
 NOTE = 'Пояснения модели — предположения. Они не проверялись сканерами, не меняют статусы и не заменяют результаты проверки.'
 MAX_FAILURES = 10
 
@@ -9,8 +10,8 @@ def _latest(calls):
     """Последний запрос по каждому предмету пояснения. calls идут от новых к старым."""
     latest = {}
     for call in calls:
-        # Служебные записи (лимит, описание изменения для PR) не относятся к пояснениям находок.
-        if call.subject_key != LIMIT_KEY and not call.subject_key.startswith('change:'):
+        # Служебные записи (лимит, описание изменения для PR, выбор версии) не относятся к пояснениям находок.
+        if call.subject_key != LIMIT_KEY and not call.subject_key.startswith(SERVICE_PREFIXES):
             latest.setdefault(call.subject_key, call)
     return latest
 
@@ -54,9 +55,12 @@ def _section(calls):
     explained = [c for c in latest.values() if c.status == 'COMPLETED']
     failed = [c for c in latest.values() if c.status != 'COMPLETED']
     # Лимит показывается, только если он остановил самый последний запуск: позднее полученные пояснения его снимают.
-    limited = calls[0].status == 'LIMIT_EXCEEDED'
-    if not latest:
+    newest_explained = next((c for c in calls if c.subject_key == LIMIT_KEY or not c.subject_key.startswith(SERVICE_PREFIXES)), None)
+    limited = newest_explained is not None and newest_explained.status == 'LIMIT_EXCEEDED'
+    if not latest and limited:
         status, message = 'LIMITED', 'Достигнут лимит запросов к модели: пояснения не запрашивались.'
+    elif not latest:
+        status, message = 'NOT_RUN', 'Пояснения модели не запрашивались.'
     elif not failed and not limited:
         status, message = 'COMPLETED', f'Модель пояснила групп находок: {len(explained)}.'
     elif explained:
@@ -72,7 +76,7 @@ def _section(calls):
                 for c in failed[:MAX_FAILURES]]
     if limited:
         failures.append({'subject': LIMIT_KEY, 'status': 'LIMIT_EXCEEDED', 'error_code': 'limit',
-                         'message': calls[0].error_message})
+                         'message': newest_explained.error_message})
     return {'status': status, 'message': message, 'note': NOTE, 'explained': len(explained), 'failed': len(failed),
             'provider': newest.provider, 'model': newest.model,
             'input_tokens': sum(c.input_tokens or 0 for c in calls), 'output_tokens': sum(c.output_tokens or 0 for c in calls),

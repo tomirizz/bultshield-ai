@@ -13,6 +13,7 @@ openai (любой OpenAI-совместимый API, в том числе ло�
 import json
 import math
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -53,6 +54,8 @@ class LLMError(Exception):
 class LLMUnavailable(LLMError):
     """Модель не ответила: сеть, таймаут, 429, 5xx. Повторять сразу бессмысленно, проверки это не останавливает."""
     code = 'unavailable'
+    retry_after_ok = False   # True только для кратковременных сбоев HTTP (429, 5xx), которые адаптер может повторить сам
+    pause = None             # пауза до повтора в секундах, если провайдер её назвал (заголовок Retry-After)
 
 
 class LLMNotConfigured(LLMError):
@@ -110,6 +113,15 @@ def validate_base_url(value):
     return value.rstrip('/')
 
 
+def _retry_after(error):
+    """Пауза из заголовка Retry-After (секунды), если он есть и разумен. Иначе None."""
+    try:
+        value = float(error.headers.get('Retry-After')) if error.headers is not None else None
+    except (TypeError, ValueError):
+        return None
+    return value if value is not None and 0 <= value <= 3600 else None
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -120,22 +132,44 @@ def _default_opener(request, timeout):
 
 
 class HttpProvider:
-    """Общая часть внешних провайдеров: POST JSON, ограниченный ответ, единообразные ошибки."""
-    name = 'http'
+    """Общая часть внешних провайдеров: POST JSON, ограниченный ответ, единообразные ошибки.
 
-    def __init__(self, *, api_key, model, base_url, timeout, opener=None):
+    Параметры подбираются под модель без смены кода: новые модели OpenAI не принимают max_tokens и произвольную temperature
+    (max_tokens_param, omit_temperature), часть совместимых серверов умеет JSON-режим (json_mode). Временные сбои провайдера
+    (429, 5xx) повторяются не больше retries раз с короткой паузой; остальные ошибки и таймаут сети не повторяются.
+    """
+    name = 'http'
+    MAX_PAUSE = 5.0
+
+    def __init__(self, *, api_key, model, base_url, timeout, opener=None, retries=0, sleep=time.sleep, omit_temperature=False,
+                 max_tokens_param='max_tokens', json_mode=False):
         if not api_key:
             raise LLMNotConfigured('LLM_API_KEY не задан.')
         if not model:
             raise LLMNotConfigured('LLM_MODEL не задана.')
+        if max_tokens_param not in ('max_tokens', 'max_completion_tokens'):
+            raise LLMNotConfigured('LLM_MAX_TOKENS_PARAM: max_tokens или max_completion_tokens.')
         self._key, self.model, self._timeout = api_key, model, timeout
         self._base = validate_base_url(base_url)
         self._opener = opener or _default_opener
+        self._retries, self._sleep = retries, sleep
+        self._omit_temperature, self._tokens_param, self._json_mode = omit_temperature, max_tokens_param, json_mode
 
     def _safe(self, text):
         return redact(text, extra=(self._key,))[0]
 
     def _post(self, url, headers, body):
+        attempt = 0
+        while True:
+            try:
+                return self._post_once(url, headers, body)
+            except LLMUnavailable as exc:
+                if attempt >= self._retries or not exc.retry_after_ok:
+                    raise
+                self._sleep(min(self.MAX_PAUSE, exc.pause if exc.pause is not None else 1.0 * (2 ** attempt)))
+                attempt += 1
+
+    def _post_once(self, url, headers, body):
         request = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST',
                                          headers={'Content-Type': 'application/json', 'Accept': 'application/json', **headers})
         try:
@@ -145,7 +179,9 @@ class HttpProvider:
             if exc.code in (401, 403):
                 raise LLMNotConfigured(f'Провайдер отклонил ключ (HTTP {exc.code}).', 'auth') from None
             if exc.code in (408, 429) or exc.code >= 500:
-                raise LLMUnavailable(f'Модель временно недоступна (HTTP {exc.code}).', f'http_{exc.code}') from None
+                error = LLMUnavailable(f'Модель временно недоступна (HTTP {exc.code}).', f'http_{exc.code}')
+                error.retry_after_ok, error.pause = True, _retry_after(exc)
+                raise error from None
             raise LLMError(f'Провайдер отклонил запрос (HTTP {exc.code}).', f'http_{exc.code}') from None
         except (urllib.error.URLError, OSError, ValueError) as exc:
             # URLError.reason бывает исключением с адресом; в сообщение идёт только его тип.
@@ -170,9 +206,13 @@ class OpenAICompatible(HttpProvider):
     name = 'openai'
 
     def complete(self, system, user, max_tokens):
-        data = self._post(self._base + '/chat/completions', {'Authorization': f'Bearer {self._key}'}, {
-            'model': self.model, 'max_tokens': max_tokens, 'temperature': 0,
-            'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]})
+        body = {'model': self.model, self._tokens_param: max_tokens,
+                'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]}
+        if not self._omit_temperature:
+            body['temperature'] = 0
+        if self._json_mode:
+            body['response_format'] = {'type': 'json_object'}
+        data = self._post(self._base + '/chat/completions', {'Authorization': f'Bearer {self._key}'}, body)
         try:
             choice = data['choices'][0]
             text = choice['message']['content']
@@ -192,9 +232,10 @@ class AnthropicProvider(HttpProvider):
     name = 'anthropic'
 
     def complete(self, system, user, max_tokens):
-        data = self._post(self._base + '/v1/messages', {'x-api-key': self._key, 'anthropic-version': '2023-06-01'}, {
-            'model': self.model, 'max_tokens': max_tokens, 'temperature': 0, 'system': system,
-            'messages': [{'role': 'user', 'content': user}]})
+        body = {'model': self.model, 'max_tokens': max_tokens, 'system': system, 'messages': [{'role': 'user', 'content': user}]}
+        if not self._omit_temperature:
+            body['temperature'] = 0
+        data = self._post(self._base + '/v1/messages', {'x-api-key': self._key, 'anthropic-version': '2023-06-01'}, body)
         blocks = data.get('content')
         if not isinstance(blocks, list):
             raise LLMBadResponse('В ответе нет текста модели.')
@@ -220,14 +261,15 @@ class FakeProvider:
     """Тестовый провайдер без сети. Строит ответ из переданных данных, поэтому его можно проверять детерминированно.
 
     Режимы (LLM_FAKE_MODE) повторяют реальные сбои: unavailable (модель недоступна), garbage (ответ не JSON),
-    invented_version (модель выдумала версию), leak (в ответе секрет), english (ответ не по-русски), link (в ответе ссылка).
+    invented_version (модель выдумала версию), leak (в ответе секрет), english (ответ не по-русски), link (в ответе ссылка),
+    prefer_latest (при выборе версии берёт самую позднюю из набора: проверяет путь «модель выбрала не то, что план»).
     """
     name = 'fake'
     model = 'fake-explainer-1'
 
     def __init__(self, mode='ok'):
-        if mode not in ('ok', 'unavailable', 'garbage', 'invented_version', 'leak', 'english', 'link'):
-            raise LLMNotConfigured('LLM_FAKE_MODE: ok, unavailable, garbage, invented_version, leak, english или link.')
+        if mode not in ('ok', 'unavailable', 'garbage', 'invented_version', 'leak', 'english', 'link', 'prefer_latest'):
+            raise LLMNotConfigured('LLM_FAKE_MODE: ok, unavailable, garbage, invented_version, leak, english, link или prefer_latest.')
         self.mode = mode
 
     def complete(self, system, user, max_tokens):
@@ -237,7 +279,10 @@ class FakeProvider:
             text = 'Конечно! Вот объяснение, но не в JSON.'
         else:
             try:
-                data = json.loads(user)
+                data = json.loads(user.split('\n\nПредыдущий ответ отклонён', 1)[0])
+                if data.get('kind') == 'plan':
+                    text = self._plan(data)
+                    return LLMResult(text, self.model, estimate_tokens(system + user), estimate_tokens(text))
                 if data.get('kind') == 'change':
                     summary, risk, fix = self._change(data)
                     package = installed = None
@@ -286,6 +331,28 @@ class FakeProvider:
                                   'Upgrade the package and run the tests again.')
         return json.dumps({'summary': summary, 'risk': risk, 'recommendation': fix}, ensure_ascii=False)
 
+    def _plan(self, data):
+        """Выбор версии: по умолчанию версия плана. Режимы повторяют реальные сбои выбора (см. описание класса)."""
+        versions = [c['version'] for c in data['candidates']]
+        package, installed, default = data['package'], data['installed_version'], data['default']
+        target = default if default in versions else versions[0]
+        if self.mode == 'prefer_latest':
+            same = [c['version'] for c in data['candidates'] if not c['major_change']]
+            target = (same or versions)[-1]
+        if self.mode == 'invented_version':
+            target = '9.9.9'
+        reason = (f'Версия {target} закрывает находки пакета {package} по данным сканера и по возможности не меняет мажорную версию '
+                  f'{installed}.')
+        risk = 'Проверка выполняется в песочнице; совместимость с приложением это не гарантирует, если меняется поведение пакета.'
+        if self.mode == 'leak':
+            risk += ' Ключ доступа: ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2'
+        if self.mode == 'link':
+            reason += ' Подробности: https://example.org/advisory'
+        if self.mode == 'english':
+            reason, risk = 'This version fixes the reported vulnerabilities in the package.', 'It may change behavior of the package.'
+        major = next(c['major_change'] for c in data['candidates'] if c['version'] == target) if target in versions else False
+        return json.dumps({'target': target, 'reason': reason, 'risk': risk, 'needs_review': bool(major)}, ensure_ascii=False)
+
     @staticmethod
     def _change(data):
         """Описание набора обновлений из переданных данных: только пакеты, версии и CVE из запроса."""
@@ -315,8 +382,9 @@ def build_provider(settings=None, opener=None):
         from .bult_llm import BultProvider
         return BultProvider(settings)
     key = settings.llm_api_key.get_secret_value()
+    options = {'timeout': settings.llm_timeout_seconds, 'opener': opener, 'retries': settings.llm_retries,
+               'omit_temperature': settings.llm_omit_temperature}
     if name == 'openai':
         return OpenAICompatible(api_key=key, model=settings.llm_model, base_url=settings.llm_base_url or 'https://api.openai.com/v1',
-                                timeout=settings.llm_timeout_seconds, opener=opener)
-    return AnthropicProvider(api_key=key, model=settings.llm_model, base_url=settings.llm_base_url or 'https://api.anthropic.com',
-                             timeout=settings.llm_timeout_seconds, opener=opener)
+                                max_tokens_param=settings.llm_max_tokens_param, json_mode=settings.llm_json_mode, **options)
+    return AnthropicProvider(api_key=key, model=settings.llm_model, base_url=settings.llm_base_url or 'https://api.anthropic.com', **options)

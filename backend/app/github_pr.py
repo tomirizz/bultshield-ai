@@ -116,6 +116,7 @@ class FixSet:
     manual: list = field(default_factory=list)   # [{'package', 'reason'}]: не вошло в PR
     db_updated_at: str | None = None
     note: dict | None = None        # описание от модели (llm_change.draft_change_note); None, если не запрашивалось
+    choices: list = field(default_factory=list)   # выбор версий моделью: [{'package', 'from', 'to', 'reason', 'risk', 'rule_to'}]
 
 
 def fix_set_from_agent(result):
@@ -128,7 +129,11 @@ def fix_set_from_agent(result):
     packages = [{'package': name, 'from': item.installed, 'to': item.target, 'method': methods.get(name, ''),
                  'resolves': list(item.plan.get('resolves', []))} for name, item in chosen.items()]
     manual = [_manual_entry(i) for i in result.packages if i.package not in chosen]
-    return FixSet(packages, dict(raw.files), dict(raw.original), manual, combined.get('scan_db_updated_at'))
+    plans = {name: getattr(item, 'llm_plan', None) or {} for name, item in chosen.items()}
+    choices = [{'package': name, 'from': item.installed, 'to': item.target, 'rule_to': plans[name].get('default'),
+                'reason': plans[name].get('reason'), 'risk': plans[name].get('risk')}
+               for name, item in chosen.items() if plans[name].get('accepted') and plans[name].get('reason')]
+    return FixSet(packages, dict(raw.files), dict(raw.original), manual, combined.get('scan_db_updated_at'), choices=choices)
 
 
 def _error_line(verification):
@@ -174,6 +179,18 @@ def render_note(note):
                    '', 'Это текст языковой модели. Он не проверялся сканерами и не заменяет просмотр изменения человеком.']
 
 
+def render_choices(choices):
+    """Раздел PR о выборе версий моделью. Пусто, если версии выбрали правила. Текст модели очищается от ссылок и разметки."""
+    if not choices:
+        return []
+    lines = ['', '### Выбор версий моделью (предположение)']
+    for c in choices:
+        same = ' (совпало с версией автоматического плана)' if c.get('rule_to') == c['to'] else f" (автоматический план предлагал {_md(c.get('rule_to'), 30)})"
+        lines.append(f"- `{_md(c['package'])}` {_md(c['from'])} → {_md(c['to'])}{same}: {_md(c['reason'], 500)} Риск: {_md(c['risk'], 500)}")
+    lines.append('Версия выбрана моделью из набора, который задал код, и проверена в песочнице; решение о слиянии принимает человек.')
+    return lines
+
+
 def build_pr_body(fix, base_sha=None):
     rows = ['| Пакет | Было | Стало | Способ | Закрывает |', '|---|---|---|---|---|']
     for item in fix.packages:
@@ -199,6 +216,7 @@ def build_pr_body(fix, base_sha=None):
             lines.append(f"- `{_md(m['package'])}`: {_md(m['reason'])}")
             if m.get('detail'):
                 lines.append(f"  - ошибка: {_md(m['detail'], 200)}")
+    lines += render_choices(fix.choices)
     lines += render_note(fix.note)
     lines += ['', '---', 'Сформировано автоматически (BultShield). Слияние выполняет человек.']
     return '\n'.join(lines) + '\n'
