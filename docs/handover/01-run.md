@@ -2,7 +2,7 @@
 
 ## Действующий Bult-стенд
 
-На 14 октября app и worker используют `feature/security-agent`, серверная логика `ac769fc`, приложение с последующей правкой формы `55737bb`, миграции `0013`. В существующих сервисах заданы `LLM_PROVIDER=bult`, `IMAGE_ALLOWED_REGISTRIES=docker.io`, `LLM_MAX_CALLS_PER_CHECK=3`; `AI_ENDPOINT` указывает на существующую приватную модель. Секреты не копировать в документы. App применяет миграции при запуске, затем запускается обновлённый worker.
+На 14 октября app и worker используют `feature/security-agent`, проверенный код `51fdac6` (результат — в [09](09-test-prototype-llm-acceptance.md)), миграции `0013`. Более поздние правки ветки (выбор версий моделью, [10](10-llm-planner.md)) на Bult пока не развёрнуты; схема базы не менялась, новая миграция не нужна. В существующих сервисах заданы `LLM_PROVIDER=bult`, `IMAGE_ALLOWED_REGISTRIES=docker.io`, `LLM_MAX_CALLS_PER_CHECK=3`; `AI_ENDPOINT` указывает на существующую приватную модель. Секреты не копировать в документы. App применяет миграции при запуске, затем запускается обновлённый worker.
 
 Откройте https://bultshield-app-bultshield-ai-brick.fin1.bult.app и войдите через GitHub. В проекте раздел «Проверки образов и зависимостей» принимает полный SHA коммита либо адрес готового образа. Отчёт и пояснения появляются там же. Пример и границы приёмки — [08](08-function1-live-acceptance.md). Исполнитель песочницы на Bult пока отсутствует; следующие команды Docker относятся к локальному стенду.
 
@@ -58,11 +58,12 @@ Gitleaks и Semgrep, дополнительные проверки исходн�
 | `IMAGE_DB_MAX_AGE_HOURS` | максимальный возраст базы уязвимостей Trivy, 48 часов |
 | `IMAGE_SCAN_PLATFORM` | платформа образа, `linux/amd64` |
 | `IMAGE_RESCAN_HOURS` | период перепроверки наблюдаемых образов, 24 часа; 0 отключает |
-| `LLM_PROVIDER` | `disabled` по умолчанию; в проверенном демо `fake` без сети и ключей |
-| `LLM_FAKE_MODE` | `ok` либо, для негативного сценария, `unavailable` |
-| `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL` | параметры реальной модели; в этой сдаче реальная модель не вызывалась |
+| `LLM_PROVIDER` | `disabled` по умолчанию; `fake` — демо без сети и ключей; `bult` — приватная модель Bult; `openai` (и любой OpenAI-совместимый сервер) и `anthropic` — свой провайдер, см. [10](10-llm-planner.md) |
+| `LLM_FAKE_MODE` | только для `fake`: `ok`, `unavailable`, `garbage`, `invented_version`, `leak`, `english`, `link`, `prefer_latest` (негативные сценарии и выбор более свежей версии) |
+| `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL` | параметры своего провайдера; ключ только в окружении сервера. Приватная Qwen Bult проверена вживую ([09](09-test-prototype-llm-acceptance.md)); `openai`/`anthropic` проверены только подставным HTTP-сервером |
+| `LLM_MAX_TOKENS_PARAM`, `LLM_OMIT_TEMPERATURE`, `LLM_JSON_MODE`, `LLM_RETRIES` | подстройка запроса под модель и повторы при 429/5xx: см. [10](10-llm-planner.md) |
 | `LLM_MAX_CALLS_PER_CHECK`, `LLM_DAILY_CALL_LIMIT` | лимиты 20 групп на запуск проверки и 200 отправленных запросов за скользящие 24 часа |
-| `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_SECONDS` | максимум 600 токенов ответа и таймаут 30 секунд |
+| `LLM_MAX_OUTPUT_TOKENS`, `LLM_TIMEOUT_SECONDS` | максимум токенов ответа (600 по умолчанию, до 16000 для «рассуждающих» моделей) и таймаут 30 секунд |
 | `LLM_PRICE_INPUT_PER_MTOK`, `LLM_PRICE_OUTPUT_PER_MTOK` | цены выбранного провайдера за миллион токенов; 0 означает незаданные цены, а не бесплатную настоящую модель |
 | `GITHUB_FIX_TOKEN`, `FIX_PR_ALLOWED_REPOS` | только для явно подтверждённого создания PR; в этой работе не используются |
 | `CI_TRIGGER_TOKEN`, `CI_TRIGGER_OWNER_ID` | авторизация CI при включённом входе; создаёт владелец |
