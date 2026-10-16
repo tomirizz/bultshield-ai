@@ -71,7 +71,7 @@ def candidate_versions(installed, findings, available, deprecated=(), *, default
 
     Версия попадает в набор, только если: она стабильная (x.y.z), новее установленной, не помечена устаревшей, закрывает каждую
     находку, у которой исправление известно (covers). В каждой мажорной ветке берутся самая ранняя и самая поздняя подходящие
-    версии. Набор не больше MAX_CANDIDATES; default (версия детерминированного плана) всегда в нём остаётся.
+    версии. Набор не больше MAX_CANDIDATES; default (версия детерминированного плана) остаётся, только если тоже проходит все ограничения.
     Возвращает список {'version', 'major_change'} от меньших версий к большим.
     """
     current = parse_version(installed)
@@ -89,11 +89,12 @@ def candidate_versions(installed, findings, available, deprecated=(), *, default
     for versions in lines.values():
         keep.update((versions[0], versions[-1]))
     wanted = parse_version(default) if default else None
-    if wanted is not None:
+    if wanted in ok:
         keep.add(wanted)
     ordered = sorted(keep, key=lambda v: (v[0] != current[0], v))
     if len(ordered) > MAX_CANDIDATES:
-        ordered = [v for v in ordered if v == wanted] + [v for v in ordered if v != wanted][:MAX_CANDIDATES - 1]
+        ordered = ([wanted] + [v for v in ordered if v != wanted][:MAX_CANDIDATES - 1]
+                   if wanted in ordered else ordered[:MAX_CANDIDATES])
     return [{'version': format_version(v), 'major_change': v[0] != current[0]} for v in sorted(ordered)]
 
 
@@ -118,13 +119,14 @@ def plan_update(package, installed, findings, available, deprecated=()):
     current = parse_version(installed)
     if current is None:
         return UpdatePlan('MANUAL', package, installed, reason='не удалось разобрать установленную версию')
-    needs, manual = {}, []
+    needs, manual, constraints = {}, [], []
     for finding_id, fixed in findings:
         minimum, why = requirement(current, fixed)
         if minimum is None:
             manual.append((finding_id, why))
         else:
             needs[finding_id] = minimum
+            constraints.append(fixed)
     if not needs:
         return UpdatePlan('MANUAL', package, installed, manual=tuple(manual),
                           reason='ни одну находку нельзя закрыть обновлением')
@@ -134,7 +136,8 @@ def plan_update(package, installed, findings, available, deprecated=()):
     wanted = max(needs.values())
     blocked = set(deprecated)
     options = sorted(v for v in (parse_version(item) for item in available)
-                     if v is not None and v >= wanted and format_version(v) not in blocked)
+                     if v is not None and v >= wanted and format_version(v) not in blocked
+                     and all(covers(v, fixed) for fixed in constraints))
     if not options:
         return UpdatePlan('MANUAL', package, installed, manual=tuple(manual),
                           reason='нет подходящей версии не ниже ' + format_version(wanted)

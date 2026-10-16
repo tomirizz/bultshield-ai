@@ -96,6 +96,8 @@ def create_run(db, scan_id, commit_sha=None):
     scan = _load_scan(db, scan_id)
     if commit_sha is not None and not COMMIT.fullmatch(commit_sha):
         raise FixRunError('Коммит должен быть полным SHA-1 (40 символов, нижний регистр).')
+    if scan.commit_sha and commit_sha and scan.commit_sha != commit_sha:
+        raise FixRunError('Исходный коммит проекта не совпадает с коммитом проверенного образа.')
     current = now()
     for run in db.scalars(select(DependencyFixRun).where(DependencyFixRun.scan_id == scan.id, DependencyFixRun.status == 'RUNNING')):
         if effective_status(run, current) == 'RUNNING':
@@ -159,8 +161,11 @@ def execute_run(db, scan_id, project_dir, *, commit_sha=None, agent=run_fix_agen
     Результат агента (с файлами для PR) остаётся только в памяти этого процесса: в БД файлы не пишутся.
     Всё, что не удалось, остаётся FAILED с понятной причиной. Находки при этом сохраняют статус «обнаружена».
     """
+    actual_commit = detect_commit(project_dir)
+    if actual_commit and commit_sha and actual_commit != commit_sha:
+        raise FixRunError('Указанный коммит не совпадает с фактическим коммитом проекта.')
     if commit_sha is None:
-        commit_sha = detect_commit(project_dir)
+        commit_sha = actual_commit
     run = create_run(db, scan_id, commit_sha)
     run_id = run.id
     try:

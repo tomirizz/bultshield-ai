@@ -1,6 +1,10 @@
 # Проверки и доказательства
 
-## Повторный локальный прогон 16 октября
+## Полная сверка первого раздела ТЗ
+
+**914 passed, 4 skipped, 1 warning in 91.52s**, плюс 110 целевых проверок; Ruff и diff прошли. [Полный лог](evidence/backend-tests-full-spec-2026-10-16.txt), [исправления и границы](13-full-spec-review.md).
+
+## Предыдущий локальный прогон 16 октября
 
 **906 passed, 4 skipped, 1 warning in 130.48s** на Mac, отдельная база `bultshield_handover_test`. [Полный лог](evidence/backend-tests-review-2026-10-16.txt). Три frontend-теста и TypeScript/Vite build прошли. Ruff с конфигурацией `backend/pyproject.toml` и `git diff --check` прошли. Четыре пропуска относятся к отсутствующим локальным Gitleaks, Semgrep и Nuclei; тест настоящего Trivy прошёл. Предупреждение — устаревающая связка Starlette/httpx. Исправление и границы проверки — [11](11-review-2026-10-16.md).
 

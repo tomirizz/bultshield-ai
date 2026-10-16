@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from .config import get_settings
+from .dependency_fix import parse_version
 from .llm import LLMBadResponse, LLMError, LLMNotConfigured, LLMUnavailable, build_provider, cost_usd, redact
 from .llm_explain import SENT_STATUSES, InvalidResponse, check_free_text, load_object
 from .models import LLMCall, Scan
@@ -177,6 +178,17 @@ def make_planner(db, scan_id, *, provider=None, settings=None):
     def planner(package, installed, findings, candidates, default):
         if state['stop'] is not None:
             return _out(state['stop']['status'], state['stop']['message'])
+        if state['provider'] is None:
+            try:
+                state['provider'] = build_provider(settings)
+            except LLMNotConfigured as exc:
+                state['stop'] = {'status': 'NOT_CONFIGURED', 'message': str(exc)}
+                return _out('NOT_CONFIGURED', str(exc))
+        current, target = parse_version(installed), parse_version(default)
+        versions = {f.get('installed_version', installed) for f in findings}
+        if (current and target and target > current and target[:2] == current[:2]
+                and len(versions) == 1 and all(f.get('fixed_version') for f in findings)):
+            return _out('SKIPPED', 'Очевидное patch-обновление: версию выбрали правила, запрос к модели не нужен.')
         result = choose_version(db, scan_id, package, installed, findings, candidates, default,
                                 provider=state['provider'], settings=settings)
         if result['status'] in ('NOT_CONFIGURED', 'UNAVAILABLE', 'LIMIT_EXCEEDED'):

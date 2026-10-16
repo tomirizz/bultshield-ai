@@ -52,7 +52,7 @@ def test_default_of_the_rules_is_always_a_candidate():
     plan = plan_update('lodash', '4.17.15', PAIRS, VERSIONS, ['4.18.1'])
     assert plan.target in [c['version'] for c in candidate_versions('4.17.15', PAIRS, VERSIONS, ['4.18.1'], default=plan.target)]
     found = candidate_versions('4.17.15', [('CVE-1', '4.99.0')], ['4.17.15', '4.17.16'], default='4.17.16')   # правила ослабили условие
-    assert [c['version'] for c in found] == ['4.17.16']
+    assert found == []  # даже версия правил обязана закрывать полный набор находок
 
 
 def test_findings_without_a_fix_do_not_restrict_the_set():
@@ -190,7 +190,7 @@ def test_daily_limit_stops_requests(db, check):
 def test_planner_stops_asking_after_the_model_is_unavailable(db, check):
     provider = Counting(FakeProvider('unavailable'))
     planner = make_planner(db, check, provider=provider, settings=cfg())
-    first = planner('lodash', '4.17.15', FINDINGS, CANDIDATES, '4.17.21')
+    first = planner('lodash', '4.16.15', FINDINGS, CANDIDATES, '4.17.21')
     second = planner('qs', '6.5.5', FINDINGS, CANDIDATES, '4.17.21')
     assert first['status'] == second['status'] == 'UNAVAILABLE' and provider.calls == 1
 
@@ -333,7 +333,8 @@ def test_packages_without_a_proposal_never_reach_the_model():
 
 def test_report_shows_who_chose_each_version_and_explanations_ignore_plan_calls(db, check):
     planner = make_planner(db, check, provider=FakeProvider('prefer_latest'), settings=cfg())
-    result = run_fix_agent('/p', PKG, registry=REGISTRY, verify=Verifier(), planner=planner)
+    group = [{**f, 'installed_version': '4.16.15'} for f in PKG]  # minor-обновление требует выбора
+    result = run_fix_agent('/p', group, registry=REGISTRY, verify=Verifier(), planner=planner)
     run = fix_runs.create_run(db, check, 'a' * 40)
     rows = db.scalars(select(Finding).where(Finding.scan_id == check)).all()
     fix_runs.complete_run(db, run.id, result, rows)
