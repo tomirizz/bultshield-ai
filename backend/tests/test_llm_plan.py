@@ -280,6 +280,16 @@ def test_model_agreeing_with_the_rules_costs_one_check():
     assert item.target == '4.17.21' and item.llm_plan['accepted'] is True
 
 
+def test_model_caution_is_preserved_when_it_agrees_with_rules():
+    result, verify = agent(Planner(reply('4.17.21', needs_review=True)))
+    (item,) = result.packages
+    assert item.target == '4.17.21' and item.status == FIX_PASSED
+    assert item.needs_review is True
+    assert result.combined is None
+    assert result.summary['needs_review'] == 1
+    assert len(verify.calls) == 1
+
+
 def test_model_can_only_raise_caution():
     (item,) = agent(Planner(reply('4.18.2', needs_review=True)))[0].packages
     assert item.status == FIX_PASSED and item.needs_review is True and 'просмотр человеком' in item.reason

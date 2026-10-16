@@ -200,9 +200,9 @@ def _handle_package(project_dir, findings, package, installed, group, ids, regis
             item.needs_review = True
         if chosen_by_model:
             item.reason += ' Версию выбрала модель из допустимого набора; выбор проверен в песочнице.'
-            if llm.get('needs_review'):
-                item.needs_review = True
-                item.reason += ' Модель отметила, что нужен просмотр человеком.'
+        if llm and llm.get('accepted') is True and llm.get('needs_review'):
+            item.needs_review = True
+            item.reason += ' Модель отметила, что нужен просмотр человеком.'
     elif result.outcome == INCONCLUSIVE:
         item.status = FIX_PROPOSED
         item.reason = 'Исправление предложено, но проверка не завершена: ' + result.reason

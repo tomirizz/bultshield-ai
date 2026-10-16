@@ -1,6 +1,10 @@
 # Проверки и доказательства
 
-## Итог после добавления выбора версий моделью (LLM-планировщика)
+## Повторный локальный прогон 16 октября
+
+**906 passed, 4 skipped, 1 warning in 130.48s** на Mac, отдельная база `bultshield_handover_test`. [Полный лог](evidence/backend-tests-review-2026-10-16.txt). Три frontend-теста и TypeScript/Vite build прошли. Ruff с конфигурацией `backend/pyproject.toml` и `git diff --check` прошли. Четыре пропуска относятся к отсутствующим локальным Gitleaks, Semgrep и Nuclei; тест настоящего Trivy прошёл. Предупреждение — устаревающая связка Starlette/httpx. Исправление и границы проверки — [11](11-review-2026-10-16.md).
+
+## Предыдущий итог после добавления выбора версий моделью (LLM-планировщика)
 
 **904 passed, 5 skipped, 1 warning in 198 s** на коммите ветки `feature/security-agent` после `51fdac6`; Ruff по `backend` и `scripts` с конфигурацией CI прошёл. Было 840 passed, 4 skipped. Пятый пропуск — реальный Trivy, которого нет в облачном окружении, где прогонялись эти тесты; на Mac с установленным Trivy ожидается 4 пропуска. Прогон на самом Mac и GitHub Actions для нового коммита не выполнялись.
 
