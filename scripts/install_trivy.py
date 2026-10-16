@@ -6,10 +6,10 @@ import tarfile
 import urllib.request
 from pathlib import Path
 
-VERSION = '0.74.0'
+VERSION = '0.76.0'
 RELEASES = {
-    'x86_64': ('64bit', '2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a'),
-    'aarch64': ('ARM64', 'b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5'),
+    'x86_64': ('64bit', 'e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7'),
+    'aarch64': ('ARM64', 'aab21e677a7b7071fc79f1711480840754c18a1b9d9cefa7ccd06af63a0e8f4c'),
 }
 
 

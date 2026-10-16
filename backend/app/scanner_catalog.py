@@ -8,7 +8,7 @@ RULES_PATH = Path(__file__).resolve().parents[1] / "rules" / "semgrep.yaml"
 RULES_BYTES = RULES_PATH.read_bytes()
 RULES_SHA256 = hashlib.sha256(RULES_BYTES).hexdigest()
 RULES = {rule["id"]: rule for rule in json.loads(RULES_BYTES)["rules"]}
-TRIVY_VERSION = "0.74.0"
+TRIVY_VERSION = "0.76.0"
 SCANNERS = ("gitleaks", "semgrep", "trivy")
 
 

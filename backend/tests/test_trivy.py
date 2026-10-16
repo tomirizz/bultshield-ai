@@ -15,7 +15,7 @@ from test_semgrep import install_scan_mocks
 
 
 def raw_report():
-    return {'SchemaVersion': 2, 'Trivy': {'Version': '0.74.0'}, 'ArtifactType': 'filesystem', 'Results': [
+    return {'SchemaVersion': 2, 'Trivy': {'Version': '0.76.0'}, 'ArtifactType': 'filesystem', 'Results': [
         {'Target': 'requirements.txt', 'Class': 'lang-pkgs', 'Type': 'pip', 'Vulnerabilities': [
             {'VulnerabilityID': 'CVE-2024-12345', 'PkgName': 'demo', 'PkgID': 'demo@1.0',
              'InstalledVersion': '1.0', 'FixedVersion': '1.1, 2.0', 'Severity': 'HIGH',
@@ -68,7 +68,7 @@ def test_no_cve_no_fix_unknown_severity_and_inline_exceptions():
     assert result[0]['severity'] == 'UNKNOWN' and result[1]['suppressed'] is True
     data['Results'][1]['Misconfigurations'][0]['Status'] = 'PASS'
     assert len(parse(data).findings) == 1
-    assert parse_trivy_report({'SchemaVersion': 2, 'Trivy': {'Version': '0.74.0'}, 'ArtifactType': 'filesystem'}, set()).findings == []
+    assert parse_trivy_report({'SchemaVersion': 2, 'Trivy': {'Version': '0.76.0'}, 'ArtifactType': 'filesystem'}, set()).findings == []
 
 
 def test_snapshot_excludes_untrusted_policy_and_binaries(tmp_path):

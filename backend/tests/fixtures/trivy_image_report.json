@@ -3,7 +3,7 @@
  "ArtifactType": "container_image",
  "ArtifactName": "/in/demo-main.tar",
  "Trivy": {
-  "Version": "0.74.0"
+  "Version": "0.76.0"
  },
  "Metadata": {
   "ImageID": "sha256:563839fb02e56706f9fcb0c891ffffc547beeccbe3547e43f2d55aac59befb7e",

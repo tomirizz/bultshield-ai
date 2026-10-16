@@ -4,7 +4,7 @@
 
 Unified Scan Engine on Bult.ai: queued jobs → worker → Gitleaks → Semgrep CE → Trivy → normalization → PostgreSQL findings. [Stage 6 architecture and deployment](docs/STAGE_6.md). [Stage 5 scope, security policy and deployment](docs/STAGE_5.md).
 
-Public GitHub repository → shallow checkout → Gitleaks 8.30.1 + Semgrep CE 1.178.0 + Trivy 0.74.0 → redacted findings in PostgreSQL → dashboard.
+Public GitHub repository → shallow checkout → Gitleaks 8.30.1 + Semgrep CE 1.178.0 + Trivy 0.76.0 → redacted findings in PostgreSQL → dashboard.
 
 The application, PostgreSQL and worker run on **Bult.ai**. The local LLM runs on Bult.ai; no external LLM API is used.
 
